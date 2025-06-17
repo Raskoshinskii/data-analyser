@@ -86,6 +86,48 @@ This will:
 - Populate it with Porsche-related mock data
 - Create sample JIRA tickets for testing
 
+### First-time JIRA Setup
+
+When JIRA starts for the first time, you need to complete the setup wizard:
+
+1. First, verify that the database is properly set up:
+```bash
+chmod +x scripts/verify_db.sh
+./scripts/verify_db.sh
+```
+
+2. If the script indicates any database problems, restart the containers:
+```bash
+docker-compose down
+docker-compose up -d
+```
+
+3. Open http://localhost:8080 in your browser
+4. You should see the JIRA setup wizard - click "Set it up for me" or "I'll set it up myself"
+5. On the "Set up application properties" page:
+   - Database type: PostgreSQL
+   - Hostname: postgres (important: use "postgres", not "localhost")
+   - Port: 5432
+   - Database: jiradb
+   - Username: porsche_admin
+   - Password: p0rsch3_secret
+6. Complete the rest of the setup wizard with your preferred settings
+7. When asked to create an admin account, use:
+   - Username: admin
+   - Password: admin (or your preferred password)
+
+If you continue to have database connection issues:
+```bash
+# Check database connectivity
+docker exec porsche_db psql -U porsche_admin -c "SELECT 1"
+
+# Restart JIRA only
+docker-compose restart jira
+
+# Check JIRA logs
+docker logs jira_server
+```
+
 ### Running the Agent
 
 Run the agent using one of the following commands:
