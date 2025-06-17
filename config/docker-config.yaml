@@ -6,11 +6,11 @@ agent:
     max_tokens: 1500
 
 database:
-  connection_string: "postgresql://porsche_admin:p0rsch3_secret@localhost:5432/porsche_analytics"
+  connection_string: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${DB_HOST}:${DB_PORT}/${POSTGRES_DB}"
   schema_info_query: "SELECT table_name, column_name, data_type FROM information_schema.columns WHERE table_schema = 'public'"
 
 jira:
-  url: "http://localhost:8080"
-  username: "admin"  # Default Jira setup username
-  api_token: "admin"  # Default Jira setup password
-  project_key: "DATA"
+  url: "${JIRA_URL}"
+  username: "${JIRA_USER}"
+  api_token: "${JIRA_PASSWORD}"
+  project_key: "${JIRA_PROJECT_KEY}"

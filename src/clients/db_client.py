@@ -1,8 +1,7 @@
 import time
 import logging
-from typing import List, Dict, Any, Optional, Tuple
+from typing import List, Dict
 import pandas as pd
-import sqlalchemy
 from sqlalchemy import create_engine, text
 from src.models.schemas import QueryResult
 

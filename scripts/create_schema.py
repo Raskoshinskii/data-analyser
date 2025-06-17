@@ -1,5 +1,7 @@
 import psycopg2
 import logging
+import os
+from dotenv import load_dotenv
 
 logging.basicConfig(
     level=logging.INFO,
@@ -8,13 +10,16 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
-# Database connection parameters
+# Load environment variables
+load_dotenv()
+
+# Database connection parameters from environment variables
 db_params = {
-    'dbname': 'porsche_analytics',
-    'user': 'porsche_admin',
-    'password': 'p0rsch3_secret',
-    'host': 'localhost',
-    'port': '5432'
+    'dbname': os.environ.get('POSTGRES_DB'),
+    'user': os.environ.get('POSTGRES_USER'),
+    'password': os.environ.get('POSTGRES_PASSWORD'),
+    'host': os.environ.get('DB_HOST'),
+    'port': os.environ.get('DB_PORT')
 }
 
 # SQL statements to create tables

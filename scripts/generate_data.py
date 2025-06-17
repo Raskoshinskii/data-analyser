@@ -1,5 +1,7 @@
 import psycopg2
 import logging
+import os
+from dotenv import load_dotenv
 
 logging.basicConfig(
     level=logging.INFO,
@@ -8,13 +10,16 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
-# Database connection parameters
+# Load environment variables
+load_dotenv()
+
+# Database connection parameters from environment variables
 db_params = {
-    'dbname': 'porsche_analytics',
-    'user': 'porsche_admin',
-    'password': 'p0rsch3_secret',
-    'host': 'localhost',
-    'port': '5432'
+    'dbname': os.environ.get('POSTGRES_DB', 'porsche_analytics'),
+    'user': os.environ.get('POSTGRES_USER', 'porsche_admin'),
+    'password': os.environ.get('POSTGRES_PASSWORD', 'p0rsch3_secret'),
+    'host': os.environ.get('DB_HOST', 'localhost'),
+    'port': os.environ.get('DB_PORT', '5432')
 }
 
 # Porsche-specific data
@@ -100,75 +105,57 @@ def main():
         conn.autocommit = False
         cur = conn.cursor()
         
-        # Insert models
-        logger.info("Inserting data into models table...")
+        # Bulk insert models
+        logger.info("Bulk inserting data into models table...")
         models_sql = """
             INSERT INTO models (model_name, model_code, production_start_year, production_end_year, 
                                segment, base_price, horsepower, body_type, is_electric, description)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-            RETURNING model_id
         """
-        model_ids = []
-        for model in porsche_models:
-            cur.execute(models_sql, model)
-            model_ids.append(cur.fetchone()[0])
-        logger.info(f"Inserted {len(model_ids)} models")
+        cur.executemany(models_sql, porsche_models)
         
-        # Insert dealerships
-        logger.info("Inserting data into dealerships table...")
+        # Bulk insert dealerships
+        logger.info("Bulk inserting data into dealerships table...")
         dealerships_sql = """
             INSERT INTO dealerships (name, address, city, country, region, opening_date, 
                                     service_center, sales_capacity, rating, manager_name)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-            RETURNING dealership_id
         """
-        dealership_ids = []
-        for dealership in dealerships:
-            cur.execute(dealerships_sql, dealership)
-            dealership_ids.append(cur.fetchone()[0])
-        logger.info(f"Inserted {len(dealership_ids)} dealerships")
+        cur.executemany(dealerships_sql, dealerships)
         
-        # Insert customers
-        logger.info("Inserting data into customers table...")
+        # Bulk insert customers
+        logger.info("Bulk inserting data into customers table...")
         customers_sql = """
             INSERT INTO customers (first_name, last_name, email, phone, address, city, country, 
                                   date_of_birth, registration_date, loyalty_points, preferred_dealership_id)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-            RETURNING customer_id
         """
-        customer_ids = []
-        for customer in customers:
-            cur.execute(customers_sql, customer)
-            customer_ids.append(cur.fetchone()[0])
-        logger.info(f"Inserted {len(customer_ids)} customers")
+        cur.executemany(customers_sql, customers)
         
-        # Insert sales
-        logger.info("Inserting data into sales table...")
+        # Bulk insert sales
+        logger.info("Bulk inserting data into sales table...")
         sales_sql = """
             INSERT INTO sales (customer_id, dealership_id, model_id, sale_date, price, payment_method,
                               currency, customization_cost, vin, color, options, warranty_years)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-            RETURNING sale_id
         """
-        for sale in sales:
-            cur.execute(sales_sql, sale)
-        logger.info(f"Inserted {len(sales)} sales")
+        cur.executemany(sales_sql, sales)
         
-        # Insert service records
-        logger.info("Inserting data into service_records table...")
+        # Bulk insert service records
+        logger.info("Bulk inserting data into service_records table...")
         service_sql = """
             INSERT INTO service_records (vin, dealership_id, service_date, mileage, service_type,
                                        description, cost, technician, parts_replaced, hours_spent,
                                        customer_satisfaction)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
-        for service in service_records:
-            cur.execute(service_sql, service)
-        logger.info(f"Inserted {len(service_records)} service records")
+        cur.executemany(service_sql, service_records)
         
         # Commit the changes
         conn.commit()
-        logger.info("Data generation completed successfully")
+        logger.info(f"Data generation completed successfully - inserted {len(porsche_models)} models, "
+                   f"{len(dealerships)} dealerships, {len(customers)} customers, "
+                   f"{len(sales)} sales records, and {len(service_records)} service records")
         
     except (Exception, psycopg2.DatabaseError) as error:
         logger.error(f"Error: {error}")
@@ -181,4 +168,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

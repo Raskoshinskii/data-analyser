@@ -1,6 +1,8 @@
 import logging
 import time
+import os
 from jira import JIRA
+from dotenv import load_dotenv
 
 logging.basicConfig(
     level=logging.INFO,
@@ -9,11 +11,14 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
+# Load environment variables
+load_dotenv()
+
 # JIRA connection parameters
-JIRA_URL = 'http://localhost:8080'
-JIRA_USER = 'admin'
-JIRA_PASSWORD = 'admin'  # This should be changed after first login
-PROJECT_KEY = 'DATA'
+JIRA_URL = os.environ.get('JIRA_URL', 'http://localhost:8080')
+JIRA_USER = os.environ.get('JIRA_USER', 'admin')
+JIRA_PASSWORD = os.environ.get('JIRA_PASSWORD', 'admin')  # This should be changed after first login
+PROJECT_KEY = os.environ.get('JIRA_PROJECT_KEY', 'DATA')
 
 # Sample data analysis tickets
 sample_tickets = [
