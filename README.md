@@ -1,13 +1,12 @@
 # 🤖 Data Analysis Automation Agent
 
-An intelligent automation system that processes data analysis requests from JIRA tickets, generates appropriate SQL queries, executes them against a database, and delivers business insights.
+An intelligent automation system that processes data analysis requests, generates appropriate SQL queries, executes them against a database, and delivers business insights.
 
 ## 🌟 Features
 
 - 📊 Automated SQL generation from natural language requests
 - ✅ SQL validation for safety and correctness
 - 🔍 Intelligent data analysis and insight generation
-- 🔄 JIRA integration for ticket management
 - 🛡️ Error handling and retry mechanisms
 
 ## 🚀 Getting Started
@@ -16,7 +15,6 @@ An intelligent automation system that processes data analysis requests from JIRA
 
 - 🐍 Python 3.11+
 - 🐘 PostgreSQL database
-- 🧩 JIRA instance (local or remote)
 - 🔑 OpenAI API key
 - 🐋 Docker and Docker Compose (for local development)
 
@@ -50,12 +48,6 @@ OPENAI_API_KEY=your_api_key_here
 ```yaml
 database:
   connection_string: "postgresql://username:password@host:port/database"
-
-jira:
-  url: "https://your-company.atlassian.net"
-  username: "your_username"
-  api_token: "your_api_token"
-  project_key: "YOUR_PROJECT"
 ```
 
 ## 🏁 Usage
@@ -81,49 +73,57 @@ python scripts/install_mock_requirements.py
 ```
 
 This will:
-- Start PostgreSQL and JIRA Docker containers
+- Start a PostgreSQL Docker container
 - Create a sample database schema
 - Populate it with Porsche-related mock data
-- Create sample JIRA tickets for testing
 
-### First-time JIRA Setup
-
-When JIRA starts for the first time, you need to complete the setup wizard:
-
-1. First, verify that the database is properly set up:
+4. Verify the database is setup correctly:
 ```bash
-chmod +x scripts/verify_db.sh
 ./scripts/verify_db.sh
 ```
 
-2. If the script indicates any database problems, restart the containers:
+### Running the Agent
+
+Run the agent using one of the following commands:
+
 ```bash
-docker-compose down
-docker-compose up -d
+# Process a data analysis request
+python main.py --query "Analyze the sales performance of different Porsche models during Q1 2023"
+
+# Use a specific configuration file
+python main.py --config config/docker-config.yaml --query "Compare dealership performance across regions"
 ```
 
-3. Open http://localhost:8080 in your browser
-4. You should see the JIRA setup wizard - click "Set it up for me" or "I'll set it up myself"
-5. On the "Set up application properties" page:
-   - Database type: PostgreSQL
-   - Hostname: postgres (important: use "postgres", not "localhost")
-   - Port: 5432
-   - Database: jiradb
-   - Username: porsche_admin
-   - Password: p0rsch3_secret
-6. Complete the rest of the setup wizard with your preferred settings
-7. When asked to create an admin account, use:
-   - Username: admin
-   - Password: admin (or your preferred password)
+### Common Command Line Options
 
-If you continue to have database connection issues:
-```bash
-# Check database connectivity
-docker exec porsche_db psql -U porsche_admin -c "SELECT 1"
+- `--config`: Path to a config file (defaults to `config/config.yaml`)
+- `--query`: The data analysis query to process
 
-# Restart JIRA only
-docker-compose restart jira
+## 🔄 Workflow 
 
+The agent follows this workflow:
+
+1. **Task Understanding**: Interprets the natural language query
+2. **SQL Generation**: Creates an SQL query that fulfills the request
+3. **Query Validation**: Validates the query for syntax, safety, and semantic correctness
+4. **Query Execution**: Runs the validated query against the database
+5. **Results Validation**: Ensures the results are reasonable for the task
+6. **Insight Generation**: Analyzes the results to create business insights
+
+## 📊 Database Schema
+
+The sample database contains tables for:
+- `models` - Porsche car models information
+- `dealerships` - Dealership locations and details
+- `customers` - Customer demographic information
+- `sales` - Vehicle sales records
+- `service_records` - Vehicle service and maintenance history
+
+## 🔍 Troubleshooting
+
+- **Database Errors**: Check your database connection string and ensure the database is running
+- **OpenAI API Errors**: Ensure your API key is correctly set in the .env file
+- **Agent Failures**: Check the logs in `data_analyzer.log` for detailed error information
 # Check JIRA logs
 docker logs jira_server
 ```

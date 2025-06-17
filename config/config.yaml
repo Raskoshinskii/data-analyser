@@ -8,9 +8,3 @@ agent:
 database:
   connection_string: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${DB_HOST}:${DB_PORT}/${POSTGRES_DB}"
   schema_info_query: "SELECT table_name, column_name, data_type FROM information_schema.columns WHERE table_schema = 'public'"
-
-jira:
-  url: "${JIRA_URL}"
-  username: "${JIRA_USER}"
-  api_token: "${JIRA_PASSWORD}"
-  project_key: "${JIRA_PROJECT_KEY}"
