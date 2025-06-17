@@ -1,9 +1,5 @@
 import psycopg2
 import logging
-import random
-from datetime import datetime, timedelta
-from faker import Faker
-import numpy as np
 
 logging.basicConfig(
     level=logging.INFO,
@@ -11,7 +7,6 @@ logging.basicConfig(
 )
 
 logger = logging.getLogger(__name__)
-fake = Faker()
 
 # Database connection parameters
 db_params = {
@@ -39,289 +34,61 @@ porsche_models = [
     ('Carrera GT', 'P-CGT', 2003, 2007, 'Supercar', 448000.00, 605, 'Convertible', False, 'Mid-engine sports car')
 ]
 
-regions = ['North America', 'Europe', 'Asia Pacific', 'Middle East', 'South America']
-countries = {
-    'North America': ['United States', 'Canada', 'Mexico'],
-    'Europe': ['Germany', 'United Kingdom', 'France', 'Italy', 'Switzerland', 'Netherlands', 'Spain'],
-    'Asia Pacific': ['China', 'Japan', 'Australia', 'South Korea', 'Singapore'],
-    'Middle East': ['United Arab Emirates', 'Saudi Arabia', 'Qatar', 'Kuwait'],
-    'South America': ['Brazil', 'Argentina', 'Chile', 'Colombia']
-}
+# Dealership data
+dealerships = [
+    ('Porsche New York City', '711 11th Avenue, New York, NY 10019', 'New York', 'United States', 'North America', '2000-03-15', True, 30, 4.7, 'John Smith'),
+    ('Porsche Berlin', 'Franklinstrasse 23, 10587 Berlin', 'Berlin', 'Germany', 'Europe', '1998-06-20', True, 25, 4.8, 'Hans Mueller'),
+    ('Porsche Los Angeles', '8425 Wilshire Blvd, Beverly Hills, CA 90211', 'Los Angeles', 'United States', 'North America', '1999-11-10', True, 35, 4.6, 'David Johnson'),
+    ('Porsche Tokyo', '2-chōme-6-15 Roppongi, Minato City, Tokyo', 'Tokyo', 'Japan', 'Asia Pacific', '2005-04-30', True, 20, 4.9, 'Takeshi Tanaka'),
+    ('Porsche London', '27 Berkeley Square, Mayfair, London W1J 6DS', 'London', 'United Kingdom', 'Europe', '1997-09-12', True, 22, 4.5, 'Emma Wilson'),
+    ('Porsche Dubai', 'Sheikh Zayed Rd, Dubai', 'Dubai', 'United Arab Emirates', 'Middle East', '2010-01-18', True, 40, 4.8, 'Ahmed Al-Farsi'),
+    ('Porsche Melbourne', '121 Swan St, Richmond VIC 3121', 'Melbourne', 'Australia', 'Asia Pacific', '2008-07-22', True, 18, 4.6, 'Sarah Johnson'),
+    ('Porsche Munich', 'Olof-Palme-Straße 35, 81829 München', 'Munich', 'Germany', 'Europe', '1992-05-05', True, 30, 4.7, 'Franz Weber'),
+    ('Porsche Shanghai', '888 Tianshan Road, Shanghai', 'Shanghai', 'China', 'Asia Pacific', '2012-11-28', True, 25, 4.4, 'Li Wei'),
+    ('Porsche Paris', '73 Avenue des Champs-Élysées, 75008 Paris', 'Paris', 'France', 'Europe', '1994-02-14', True, 20, 4.5, 'Claire Dubois')
+]
 
-# Generate a list of VINs to ensure uniqueness
-def generate_vins(count=300):
-    vins = set()
-    while len(vins) < count:
-        vin = 'WP0' + ''.join(random.choices('ABCDEFGHJKLMNPRSTUVWXYZ0123456789', k=14))
-        vins.add(vin)
-    return list(vins)
+# Customer data
+customers = [
+    ('Michael', 'Johnson', 'michael.j@example.com', '555-1234', '123 Park Avenue, New York, NY', 'New York', 'United States', '1975-06-15', '2015-03-10', 350, 1),
+    ('Emma', 'Schmidt', 'emma.s@example.com', '555-2345', 'Münchener Str. 45, Berlin', 'Berlin', 'Germany', '1982-11-23', '2016-07-22', 280, 2),
+    ('James', 'Williams', 'j.williams@example.com', '555-3456', '789 Beverly Blvd, Los Angeles, CA', 'Los Angeles', 'United States', '1968-04-30', '2012-12-05', 520, 3),
+    ('Yuki', 'Tanaka', 'yuki.t@example.com', '555-4567', '4-2-1 Roppongi, Minato-ku, Tokyo', 'Tokyo', 'Japan', '1979-08-17', '2018-01-15', 190, 4),
+    ('Oliver', 'Taylor', 'oliver.t@example.com', '555-5678', '25 Oxford Street, London', 'London', 'United Kingdom', '1984-03-12', '2017-10-08', 220, 5),
+    ('Fatima', 'Al-Sayed', 'fatima.a@example.com', '555-6789', 'Palm Jumeirah, Dubai', 'Dubai', 'United Arab Emirates', '1988-07-05', '2019-04-20', 120, 6),
+    ('Robert', 'Chen', 'robert.c@example.com', '555-7890', '45 Collins Street, Melbourne', 'Melbourne', 'Australia', '1972-09-28', '2014-08-17', 380, 7),
+    ('Sophia', 'Wagner', 'sophia.w@example.com', '555-8901', 'Maximilianstrasse 15, Munich', 'Munich', 'Germany', '1981-12-03', '2013-05-22', 420, 8),
+    ('Wei', 'Zhang', 'wei.z@example.com', '555-9012', '123 Nanjing Road, Shanghai', 'Shanghai', 'China', '1976-02-18', '2020-03-10', 90, 9),
+    ('Antoine', 'Dubois', 'antoine.d@example.com', '555-0123', '42 Rue de Rivoli, Paris', 'Paris', 'France', '1970-10-25', '2011-11-30', 580, 10)
+]
 
-# Insert data into models table
-def insert_models(cur):
-    logger.info("Inserting data into models table...")
-    models_sql = """
-        INSERT INTO models (model_name, model_code, production_start_year, production_end_year, 
-                            segment, base_price, horsepower, body_type, is_electric, description)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-        RETURNING model_id
-    """
-    model_ids = []
-    for model_data in porsche_models:
-        cur.execute(models_sql, model_data)
-        model_ids.append(cur.fetchone()[0])
-    
-    logger.info(f"Inserted {len(model_ids)} models")
-    return model_ids
+# Sales data with VINs
+sales = [
+    (1, 1, 1, '2022-03-15', 110500.00, 'Financing', 'USD', 9300.00, 'WP0AA2A91NS227619', 'Carrara White', 'Sport Chrono Package, Premium Package', 3),
+    (2, 2, 3, '2022-05-22', 92400.00, 'Cash', 'EUR', 5700.00, 'WP0BA2Y65PS275831', 'Jet Black', 'Panoramic Roof, Burmester Sound System', 3),
+    (3, 3, 2, '2022-06-10', 215000.00, 'Financing', 'USD', 8000.00, 'WP0CD2Y62PS130172', 'Guards Red', 'Sport Chrono Package, Ceramic Composite Brakes', 4),
+    (4, 4, 9, '2022-07-05', 98500.00, 'Lease', 'JPY', 4900.00, 'WP0AA2A71NS241053', 'Miami Blue', 'Premium Package, Sport Design Package', 2),
+    (5, 5, 5, '2022-08-17', 72500.00, 'Financing', 'GBP', 3500.00, 'WP0AB2A90NS267314', 'Gentian Blue', 'Adaptive Sport Seats, Lane Change Assist', 3),
+    (6, 6, 4, '2022-09-22', 182000.00, 'Cash', 'AED', 12000.00, 'WP0CD2Y68PS153047', 'GT Silver', 'Sport Chrono Package, Night Vision Assist', 5),
+    (7, 7, 7, '2022-10-14', 65000.00, 'Financing', 'AUD', 5000.00, 'WP0AA2A77NS219845', 'Chalk', 'Burmester Sound System, Sport Design Package', 3),
+    (8, 8, 11, '2022-11-30', 167500.00, 'Lease', 'EUR', 6500.00, 'WP0AB2A96NS285621', 'Lava Orange', 'Carbon Fiber Interior, Ceramic Composite Brakes', 4),
+    (9, 9, 6, '2022-12-12', 59800.00, 'Cash', 'CNY', 5200.00, 'WP0AA2A73NS253197', 'Mamba Green', 'Premium Package, Adaptive Cruise Control', 2),
+    (10, 10, 10, '2023-01-25', 79900.00, 'Financing', 'EUR', 7800.00, 'WP0BA2Y61PS291358', 'Crayon', 'Panoramic Roof, Surround View Camera', 3)
+]
 
-# Insert data into dealerships table
-def insert_dealerships(cur):
-    logger.info("Inserting data into dealerships table...")
-    dealerships_sql = """
-        INSERT INTO dealerships (name, address, city, country, region, opening_date, 
-                                 service_center, sales_capacity, rating, manager_name)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-        RETURNING dealership_id
-    """
-    dealership_ids = []
-    
-    # Insert at least 50 dealerships
-    for _ in range(50):
-        region = random.choice(regions)
-        country = random.choice(countries[region])
-        city = fake.city()
-        
-        name = f"Porsche {city}"
-        address = fake.address().replace("\n", ", ")
-        opening_date = fake.date_between(start_date='-30y', end_date='today')
-        service_center = random.random() > 0.1  # 90% have service centers
-        sales_capacity = random.randint(10, 50)
-        rating = round(random.uniform(3.0, 5.0), 2)
-        manager_name = fake.name()
-        
-        dealership_data = (name, address, city, country, region, opening_date, 
-                          service_center, sales_capacity, rating, manager_name)
-        
-        cur.execute(dealerships_sql, dealership_data)
-        dealership_ids.append(cur.fetchone()[0])
-    
-    logger.info(f"Inserted {len(dealership_ids)} dealerships")
-    return dealership_ids
-
-# Insert data into customers table
-def insert_customers(cur, dealership_ids):
-    logger.info("Inserting data into customers table...")
-    customers_sql = """
-        INSERT INTO customers (first_name, last_name, email, phone, address, city, country, 
-                              date_of_birth, registration_date, loyalty_points, preferred_dealership_id)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-        RETURNING customer_id
-    """
-    customer_ids = []
-    
-    # Insert at least 50 customers
-    for _ in range(100):
-        first_name = fake.first_name()
-        last_name = fake.last_name()
-        email = fake.email()
-        phone = fake.phone_number()
-        address = fake.address().replace("\n", ", ")
-        city = fake.city()
-        country = random.choice([item for sublist in countries.values() for item in sublist])
-        
-        # Generate ages mostly 35-65 for realistic Porsche demographics
-        age = int(np.random.normal(50, 10))
-        age = max(25, min(80, age))  # Clamp between 25 and 80
-        date_of_birth = datetime.now() - timedelta(days=365*age)
-        
-        # Registration date within the last 10 years
-        registration_date = fake.date_between(start_date='-10y', end_date='today')
-        
-        # Loyalty points - higher for longer-term customers
-        days_registered = (datetime.now().date() - registration_date).days
-        loyalty_base = days_registered / 30  # roughly months
-        loyalty_points = int(loyalty_base * random.uniform(0.8, 1.5))
-        
-        preferred_dealership_id = random.choice(dealership_ids)
-        
-        customer_data = (first_name, last_name, email, phone, address, city, country,
-                         date_of_birth, registration_date, loyalty_points, preferred_dealership_id)
-        
-        cur.execute(customers_sql, customer_data)
-        customer_ids.append(cur.fetchone()[0])
-    
-    logger.info(f"Inserted {len(customer_ids)} customers")
-    return customer_ids
-
-# Insert data into sales table
-def insert_sales(cur, customer_ids, dealership_ids, model_ids):
-    logger.info("Inserting data into sales table...")
-    sales_sql = """
-        INSERT INTO sales (customer_id, dealership_id, model_id, sale_date, price, payment_method,
-                          currency, customization_cost, vin, color, options, warranty_years)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-        RETURNING sale_id, vin
-    """
-    
-    # Generate unique VINs
-    vins = generate_vins(200)
-    sale_records = []
-    
-    # Porsche colors
-    colors = ['Carrara White', 'Jet Black', 'Guards Red', 'Racing Yellow', 'GT Silver', 
-              'Gentian Blue', 'Agate Grey', 'Chalk', 'Miami Blue', 'Lava Orange', 
-              'Crayon', 'Night Blue', 'Mamba Green']
-    
-    # Payment methods
-    payment_methods = ['Financing', 'Cash', 'Lease']
-    
-    # Common options
-    option_packages = [
-        'Sport Chrono Package', 'Premium Package', 'Sport Design Package',
-        'Adaptive Sport Seats', 'Panoramic Roof', 'Burmester Sound System',
-        'Ceramic Composite Brakes', 'Adaptive Cruise Control', 'Lane Change Assist',
-        'Surround View Camera', 'Night Vision Assist', 'Carbon Fiber Interior'
-    ]
-    
-    # Generate sales data
-    for i in range(200):
-        customer_id = random.choice(customer_ids)
-        dealership_id = random.choice(dealership_ids)
-        
-        # Models have different popularity
-        if random.random() < 0.6:
-            # More popular models (911, Cayenne, Taycan)
-            model_id = model_ids[random.choice([0, 1, 2, 4, 8])]
-        else:
-            model_id = random.choice(model_ids)
-        
-        # Sales date - more recent years have more sales (growing trend)
-        year_weights = [0.05, 0.1, 0.15, 0.2, 0.5]  # Last year has 50% of sales
-        years_ago = random.choices(range(5), weights=year_weights)[0]
-        sale_date = fake.date_between(start_date=f'-{years_ago+1}y', end_date=f'-{years_ago}y')
-        
-        # Price includes base price plus customization
-        base_price = random.uniform(60000, 200000)  # Base price varies by model
-        customization_cost = random.uniform(0, 50000) if random.random() < 0.7 else 0
-        price = base_price + customization_cost
-        
-        payment_method = random.choice(payment_methods)
-        currency = 'USD'  # Default to USD
-        
-        # Higher-end models get more customization
-        if price > 150000:
-            num_options = random.randint(3, 8)
-        else:
-            num_options = random.randint(0, 4)
-        
-        options = ', '.join(random.sample(option_packages, num_options))
-        color = random.choice(colors)
-        
-        # Warranty years - higher for more expensive cars
-        if price > 180000:
-            warranty_years = random.choice([3, 4, 5])
-        else:
-            warranty_years = random.choice([2, 3])
-        
-        vin = vins.pop()
-        
-        sale_data = (customer_id, dealership_id, model_id, sale_date, price, payment_method,
-                    currency, customization_cost, vin, color, options, warranty_years)
-        
-        cur.execute(sales_sql, sale_data)
-        result = cur.fetchone()
-        sale_records.append((result[0], result[1]))  # sale_id, vin
-    
-    logger.info(f"Inserted {len(sale_records)} sales")
-    return sale_records
-
-# Insert data into service_records table
-def insert_service_records(cur, sale_records, dealership_ids):
-    logger.info("Inserting data into service_records table...")
-    service_sql = """
-        INSERT INTO service_records (vin, dealership_id, service_date, mileage, service_type,
-                                    description, cost, technician, parts_replaced, hours_spent,
-                                    customer_satisfaction)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-    """
-    
-    # Service types and their typical costs
-    service_types = {
-        'Regular Maintenance': (500, 1500),
-        'Oil Change': (200, 400),
-        'Brake Service': (800, 2000),
-        'Tire Replacement': (1200, 3000),
-        'Engine Repair': (2000, 8000),
-        'Transmission Service': (1500, 4000),
-        'Electrical System': (800, 3000),
-        'Body Work': (1500, 10000),
-        'Interior Repair': (500, 2000),
-        'Performance Upgrade': (3000, 15000)
-    }
-    
-    # Parts that might be replaced
-    parts = [
-        'Air Filter', 'Oil Filter', 'Brake Pads', 'Brake Rotors',
-        'Tires', 'Battery', 'Spark Plugs', 'Fuel Pump', 'Water Pump',
-        'Alternator', 'Timing Belt', 'Transmission Fluid', 'Coolant',
-        'Suspension Components', 'Exhaust System'
-    ]
-    
-    # Technician names
-    technicians = [fake.name() + " (" + random.choice(["Master", "Senior", "Junior", "Certified"]) + ")" 
-                   for _ in range(20)]
-    
-    # Generate service records
-    service_count = 0
-    for sale_id, vin in sale_records:
-        # Each car might have multiple service visits
-        num_services = random.choices([0, 1, 2, 3, 4, 5], weights=[0.1, 0.2, 0.3, 0.2, 0.1, 0.1])[0]
-        
-        for s in range(num_services):
-            # Service typically happens some time after purchase
-            days_after_purchase = random.randint(30, 1500)
-            service_date = fake.date_between(start_date=f'+{days_after_purchase}d', end_date=f'+{days_after_purchase+500}d')
-            
-            # Usually serviced at the selling dealership, but sometimes elsewhere
-            if random.random() < 0.7:
-                dealership_id = random.choice(dealership_ids)
-            else:
-                dealership_id = random.choice(dealership_ids)
-            
-            # Mileage increases with time
-            base_mileage = days_after_purchase * 0.4  # Average 40 miles per day
-            mileage = int(base_mileage * random.uniform(0.7, 1.3))  # Some variation
-            
-            # Select service type and cost
-            service_type = random.choice(list(service_types.keys()))
-            min_cost, max_cost = service_types[service_type]
-            cost = random.uniform(min_cost, max_cost)
-            
-            # Description
-            description = f"{service_type} - {fake.sentence()}"
-            
-            # Parts replaced (0-3 items)
-            num_parts = random.randint(0, 3)
-            parts_replaced = ', '.join(random.sample(parts, num_parts)) if num_parts > 0 else None
-            
-            # Hours spent depends on service type
-            if service_type in ['Regular Maintenance', 'Oil Change']:
-                hours_spent = random.uniform(0.5, 2.5)
-            elif service_type in ['Brake Service', 'Tire Replacement', 'Electrical System', 'Interior Repair']:
-                hours_spent = random.uniform(1.5, 4)
-            else:
-                hours_spent = random.uniform(3, 12)
-            
-            # Customer satisfaction - generally high but some variations
-            satisfaction_weights = [0.01, 0.04, 0.15, 0.3, 0.5]  # Weighted towards 4-5 stars
-            customer_satisfaction = random.choices(range(1, 6), weights=satisfaction_weights)[0]
-            
-            service_data = (vin, dealership_id, service_date, mileage, service_type, description,
-                           cost, random.choice(technicians), parts_replaced, hours_spent, customer_satisfaction)
-            
-            cur.execute(service_sql, service_data)
-            service_count += 1
-            
-    logger.info(f"Inserted {service_count} service records")
+# Service records
+service_records = [
+    ('WP0AA2A91NS227619', 1, '2022-09-20', 5000, 'Regular Maintenance', 'Oil change and standard service', 850.00, 'James Wilson (Master)', 'Oil Filter, Air Filter', 2.5, 5),
+    ('WP0BA2Y65PS275831', 2, '2022-11-15', 8000, 'Brake Service', 'Front brake pad replacement and inspection', 1200.00, 'Erik Schmidt (Senior)', 'Brake Pads', 3.0, 5),
+    ('WP0CD2Y62PS130172', 3, '2023-01-10', 7500, 'Regular Maintenance', '7,500 mile service and software update', 950.00, 'Michael Brown (Master)', 'Oil Filter, Cabin Filter', 2.0, 4),
+    ('WP0AA2A71NS241053', 4, '2023-02-05', 10000, 'Tire Replacement', 'All four tires replaced due to wear', 2800.00, 'Kenji Nakamura (Certified)', 'Tires', 2.0, 5),
+    ('WP0AB2A90NS267314', 5, '2023-03-22', 15000, 'Regular Maintenance', '15,000 mile comprehensive service', 1450.00, 'Robert Johnson (Senior)', 'Oil Filter, Air Filter, Spark Plugs', 3.5, 4),
+    ('WP0CD2Y68PS153047', 6, '2023-04-17', 5000, 'Electrical System', 'Infotainment system troubleshooting and update', 950.00, 'Mohammed Al-Faisal (Master)', 'None', 1.5, 3),
+    ('WP0AA2A77NS219845', 7, '2023-05-10', 12000, 'Performance Upgrade', 'Sport exhaust system installation', 3800.00, 'David Thompson (Senior)', 'Exhaust System', 6.0, 5),
+    ('WP0AB2A96NS285621', 8, '2023-06-25', 9000, 'Regular Maintenance', 'Oil change and brake fluid flush', 1100.00, 'Hans Weber (Master)', 'Oil Filter, Brake Fluid', 2.5, 5),
+    ('WP0AA2A73NS253197', 9, '2023-07-15', 6000, 'Interior Repair', 'Center console replacement due to wear', 1200.00, 'Li Jie (Certified)', 'Center Console Components', 4.0, 4),
+    ('WP0BA2Y61PS291358', 10, '2023-08-28', 10000, 'Regular Maintenance', '10,000 mile service and alignment', 1350.00, 'Pierre Dubois (Master)', 'Oil Filter, Cabin Filter', 3.0, 5)
+]
 
 def main():
     """Main function to populate the database with sample data"""
@@ -333,12 +100,71 @@ def main():
         conn.autocommit = False
         cur = conn.cursor()
         
-        # Insert data into tables
-        model_ids = insert_models(cur)
-        dealership_ids = insert_dealerships(cur)
-        customer_ids = insert_customers(cur, dealership_ids)
-        sale_records = insert_sales(cur, customer_ids, dealership_ids, model_ids)
-        insert_service_records(cur, sale_records, dealership_ids)
+        # Insert models
+        logger.info("Inserting data into models table...")
+        models_sql = """
+            INSERT INTO models (model_name, model_code, production_start_year, production_end_year, 
+                               segment, base_price, horsepower, body_type, is_electric, description)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            RETURNING model_id
+        """
+        model_ids = []
+        for model in porsche_models:
+            cur.execute(models_sql, model)
+            model_ids.append(cur.fetchone()[0])
+        logger.info(f"Inserted {len(model_ids)} models")
+        
+        # Insert dealerships
+        logger.info("Inserting data into dealerships table...")
+        dealerships_sql = """
+            INSERT INTO dealerships (name, address, city, country, region, opening_date, 
+                                    service_center, sales_capacity, rating, manager_name)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            RETURNING dealership_id
+        """
+        dealership_ids = []
+        for dealership in dealerships:
+            cur.execute(dealerships_sql, dealership)
+            dealership_ids.append(cur.fetchone()[0])
+        logger.info(f"Inserted {len(dealership_ids)} dealerships")
+        
+        # Insert customers
+        logger.info("Inserting data into customers table...")
+        customers_sql = """
+            INSERT INTO customers (first_name, last_name, email, phone, address, city, country, 
+                                  date_of_birth, registration_date, loyalty_points, preferred_dealership_id)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            RETURNING customer_id
+        """
+        customer_ids = []
+        for customer in customers:
+            cur.execute(customers_sql, customer)
+            customer_ids.append(cur.fetchone()[0])
+        logger.info(f"Inserted {len(customer_ids)} customers")
+        
+        # Insert sales
+        logger.info("Inserting data into sales table...")
+        sales_sql = """
+            INSERT INTO sales (customer_id, dealership_id, model_id, sale_date, price, payment_method,
+                              currency, customization_cost, vin, color, options, warranty_years)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            RETURNING sale_id
+        """
+        for sale in sales:
+            cur.execute(sales_sql, sale)
+        logger.info(f"Inserted {len(sales)} sales")
+        
+        # Insert service records
+        logger.info("Inserting data into service_records table...")
+        service_sql = """
+            INSERT INTO service_records (vin, dealership_id, service_date, mileage, service_type,
+                                       description, cost, technician, parts_replaced, hours_spent,
+                                       customer_satisfaction)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """
+        for service in service_records:
+            cur.execute(service_sql, service)
+        logger.info(f"Inserted {len(service_records)} service records")
         
         # Commit the changes
         conn.commit()
@@ -355,3 +181,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
