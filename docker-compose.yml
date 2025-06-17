@@ -8,10 +8,12 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_MULTIPLE_DATABASES: "${POSTGRES_DB},${JIRA_DB_NAME}"
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-multiple-dbs.sh:/docker-entrypoint-initdb.d/init-multiple-dbs.sh
     networks:
       - app_network
     healthcheck:
@@ -34,6 +36,8 @@ services:
       ATL_TOMCAT_SECURE: ${ATL_TOMCAT_SECURE}
       JVM_MINIMUM_MEMORY: ${JVM_MINIMUM_MEMORY}
       JVM_MAXIMUM_MEMORY: ${JVM_MAXIMUM_MEMORY}
+      # Add explicit wait for database
+      ATL_WAIT_FOR_DB: "true"
     ports:
       - "8080:8080"
     volumes:

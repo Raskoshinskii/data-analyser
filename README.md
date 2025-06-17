@@ -18,6 +18,7 @@ An intelligent automation system that processes data analysis requests from JIRA
 - 🐘 PostgreSQL database
 - 🧩 JIRA instance (local or remote)
 - 🔑 OpenAI API key
+- 🐋 Docker and Docker Compose (for local development)
 
 ### 📦 Installation
 
@@ -40,12 +41,12 @@ pip install -r requirements.txt
 
 ## ⚙️ Configuration
 
-1. Create .env file in the project root with your OpenAI API key:
+1. Set up the `.env` file in the project root:
 ```
 OPENAI_API_KEY=your_api_key_here
 ```
 
-2. Update the configuration in config/config.yaml:
+2. Update the configuration in `config/config.yaml`:
 ```yaml
 database:
   connection_string: "postgresql://username:password@host:port/database"
@@ -63,8 +64,9 @@ jira:
 
 This project includes a self-contained development environment with mock data:
 
-1. Make the startup script executable:
+1. Make the scripts executable:
 ```bash
+chmod +x scripts/make_executable.sh
 ./scripts/make_executable.sh
 ```
 
