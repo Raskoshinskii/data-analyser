@@ -1,0 +1,16 @@
+agent:
+  max_retries: 3
+  llm:
+    model_name: "gpt-4"
+    temperature: 0.1
+    max_tokens: 1500
+
+database:
+  connection_string: "postgresql://user:password@localhost:5432/data_warehouse"
+  schema_info_query: "SELECT table_name, column_name, data_type FROM information_schema.columns WHERE table_schema = 'public'"
+
+jira:
+  url: "https://your-company.atlassian.net"
+  username: ""
+  api_token: ""
+  project_key: "DATA"

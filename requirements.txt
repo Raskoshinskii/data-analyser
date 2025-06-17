@@ -1,0 +1,11 @@
+langchain
+langgraph
+openai
+sqlvalidator
+pydantic
+python-dotenv
+sqlalchemy
+jira
+pandas
+pytest
+python-sql-formatter

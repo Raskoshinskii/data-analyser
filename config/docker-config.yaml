@@ -1,0 +1,16 @@
+agent:
+  max_retries: 3
+  llm:
+    model_name: "gpt-4"
+    temperature: 0.1
+    max_tokens: 1500
+
+database:
+  connection_string: "postgresql://porsche_admin:p0rsch3_secret@localhost:5432/porsche_analytics"
+  schema_info_query: "SELECT table_name, column_name, data_type FROM information_schema.columns WHERE table_schema = 'public'"
+
+jira:
+  url: "http://localhost:8080"
+  username: "admin"  # Default Jira setup username
+  api_token: "admin"  # Default Jira setup password
+  project_key: "DATA"

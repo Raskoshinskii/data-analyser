@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:14
+    container_name: porsche_db
+    environment:
+      POSTGRES_USER: porsche_admin
+      POSTGRES_PASSWORD: p0rsch3_secret
+      POSTGRES_DB: porsche_analytics
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - app_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U porsche_admin -d porsche_analytics"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  jira:
+    image: atlassian/jira-software:latest
+    container_name: jira_server
+    environment:
+      ATL_JDBC_URL: jdbc:postgresql://postgres:5432/jira
+      ATL_JDBC_USER: porsche_admin
+      ATL_JDBC_PASSWORD: p0rsch3_secret
+      ATL_DB_DRIVER: org.postgresql.Driver
+      ATL_DB_TYPE: postgres72
+      ATL_TOMCAT_PORT: 8080
+      ATL_TOMCAT_SCHEME: http
+      ATL_TOMCAT_SECURE: "false"
+      JVM_MINIMUM_MEMORY: 1024m
+      JVM_MAXIMUM_MEMORY: 2048m
+    ports:
+      - "8080:8080"
+    volumes:
+      - jira_data:/var/atlassian/application-data/jira
+    networks:
+      - app_network
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+networks:
+  app_network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  jira_data:
