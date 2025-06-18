@@ -1,9 +1,9 @@
 import json
+import copy
 import logging
 import requests
-from typing import Any, Dict, List, Optional, Union
 
-import requests
+from typing import Any, Dict, List, Optional, Union
 from requests.auth import HTTPBasicAuth
 
 # from src.models.schemas import JiraTicket, TicketStatus, BusinessInsight
@@ -30,6 +30,7 @@ class JiraClient:
         self.base_url = self._fix_base_url(base_url)
         self.auth = HTTPBasicAuth(username=self.email, password=self.api_token)
         self.headers = {"Content-Type": "application/json"}
+        self.account_id = self._get_account_id()
 
     def _fix_api_token(self, api_token: str) -> str:
         """
@@ -173,6 +174,63 @@ class JiraClient:
             method=method, url=url, headers=self.headers, auth=self.auth, **kwargs
         )
         return self._handle_response(response)
+    
+    def _preprocess_payload(
+        self,
+        payload: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """
+        Aligns the payload structure with Jira API requirements.
+
+        Important
+        ---------
+        - The function covers the most common fileds of a payload. 
+        New fields should be either included in the function or formatted in the payload!
+        - Performs "inplace" operation! 
+        
+        Parameters
+        ----------
+        payload : Dict[str, Any]
+            The raw payload dictionary containing issue data.
+
+        Returns
+        -------
+        Dict[str, Any]
+            The processed payload with 'fields' key and proper structure.
+        """
+        if isinstance(payload.get("project"), str):
+            payload["project"] = {"key": payload["project"]}
+
+        if isinstance(payload.get("issuetype"), str):
+            payload["issuetype"] = {"name": payload["issuetype"]}
+
+        if isinstance(payload.get("components"), str):
+            payload["components"] = [{"name": payload["components"]}]
+
+        if isinstance(payload.get("assignee"), str):
+            payload["assignee"] = [{"accountId": payload["assignee"]}]
+
+        if isinstance(payload.get("assignee"), str):
+            payload["reporteer"] = [{"accountId": payload["reporteer"]}]
+
+        return payload
+    
+    def _get_account_id(self) -> str | None:
+        """
+        Get the account ID of the currently authenticated user.
+
+        Returns
+        -------
+        str
+            The account ID of the authenticated user.
+        """
+        url = f"{self.base_url}/rest/api/3/myself"
+        response = self._request(method="get", url=url)
+        
+        if not response or "accountId" not in response:
+            return None
+            
+        return response.get("accountId")
 
     def get_comments(self, issue_key: str) -> Optional[Dict[str, Any]]:
         """
@@ -304,30 +362,15 @@ class JiraClient:
 
     def create_issue(
         self,
-        project_key: str,
-        summary: str,
-        issue_type: str,
-        description: str,
-        component: str,  # <-- new required parameter
-        additional_fields: Optional[Dict[str, Any]] = None,
-    ) -> Optional[Dict[str, Any]]:
+        payload: Dict[str, Any],
+    ) -> Dict[str, Any]:
         """
         Create a new Jira issue with required and optional fields.
 
         Parameters
         ----------
-        project_key : str
-            Jira project key.
-        summary : str
-            Issue summary.
-        issue_type : str
-            Issue type (e.g. Bug, Task).
-        description : str
-            Issue description.
-        component : str
-            Component name required by the project configuration.
-        fields : Optional[Dict[str, Any]]
-            Additional fields like priority, labels, assignee, due date.
+        payload : Dict[str, Any]
+            A dictionary containing the issue data.
 
         Returns
         -------
@@ -336,20 +379,9 @@ class JiraClient:
         """
         api_endpoint = "rest/api/2/issue"
         url = f"{self.base_url}/{api_endpoint}"
-
-        # these fields are required. Ignoring some of them may break the API call
-        base_fields = {
-            "project": {"key": project_key},
-            "components": [{"name": component}],
-            "issuetype": {"name": issue_type},
-            "summary": summary,
-            "description": description,
-        }
-
-        if additional_fields:
-            base_fields.update(additional_fields)
-
-        return self._request(method="post", url=url, json={"fields": base_fields})
+        fields = self._preprocess_payload(payload)
+        
+        return self._request(method="post", url=url, json={"fields": fields})
 
     def get_active_issues(
         self, limit: int = -1, start_at: int = 0, batch_size: int = 50

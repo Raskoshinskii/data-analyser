@@ -1,7 +1,7 @@
-import logging
-import time
 import os
-from jira import JIRA
+import sys
+import logging
+from src.clients.jira_client import JiraClient
 from dotenv import load_dotenv
 
 logging.basicConfig(
@@ -15,104 +15,64 @@ logger = logging.getLogger(__name__)
 load_dotenv()
 
 # JIRA connection parameters
-JIRA_URL = os.environ.get('JIRA_URL', 'http://localhost:8080')
-JIRA_USER = os.environ.get('JIRA_USER', 'admin')
-JIRA_PASSWORD = os.environ.get('JIRA_PASSWORD', 'admin')  # This should be changed after first login
-PROJECT_KEY = os.environ.get('JIRA_PROJECT_KEY', 'DATA')
+JIRA_BASE_URL = os.environ.get('JIRA_BASE_URL')
+JIRA_USER_EMAIL = os.environ.get('JIRA_USER_EMAIL')
+JIRA_API_TOKEN = os.environ.get('JIRA_API_TOKEN') 
+JIRA_PROJECT_KEY = os.environ.get('JIRA_PROJECT_KEY')
+
+if None in (JIRA_BASE_URL, JIRA_USER_EMAIL, JIRA_API_TOKEN, JIRA_PROJECT_KEY):
+    logger.error(f"Configure Jira Environment Variables in .env file!")
+    sys.exit(1)
 
 # Sample data analysis tickets
-sample_tickets = [
+tickets = [
     {
+        'project_key': JIRA_PROJECT_KEY,
         'summary': 'Car Models Analysis',
         'description': 'How many unqiue car models we have per car category? Sort the results in descending order!',
-        'labels': ['data_analysis', 'sales', 'quarterly']
+        'issuetype': 'Task',
+        'component': 'General',
     },
     {
+        'project_key': JIRA_PROJECT_KEY,
         'summary': 'Dealership Performance by Region Analysis',
         'description': 'Analyze the average dealership rating and sales capacity by region. Which regions have the highest performing dealerships? Sort the results by average rating in descending order.',
-        'labels': ['data_analysis', 'dealerships', 'regional']
-    }
+        'issuetype': 'Task',
+        'component': 'General',
+    },
     {
+        'project_key': JIRA_PROJECT_KEY,
         'summary': 'Service Cost Analysis by Model and Service Type',
         'description': 'Analyze the average service costs by model and service type. Identify which models have higher maintenance costs and which service types contribute most to overall service revenue.',
-        'labels': ['data_analysis', 'service', 'costs']
+        'issuetype': 'Task',
+        'component': 'General',
     },
 ]
+
 
 def setup_jira_project():
     """Set up JIRA project and create sample tickets"""
     logger.info("Connecting to JIRA...")
-    
-    # Wait for JIRA to be ready
-    retries = 0
-    while retries < 30:
-        try:
-            jira = JIRA(server=JIRA_URL, basic_auth=(JIRA_USER, JIRA_PASSWORD))
-            # Test connection by getting server info
-            jira.server_info()
-            logger.info("Connected to JIRA successfully")
-            break
-        except Exception as e:
-            logger.warning(f"JIRA not ready yet: {str(e)}")
-            retries += 1
-            time.sleep(10)
-    
-    if retries == 30:
-        logger.error("Could not connect to JIRA after multiple attempts")
-        return
+    try:
+        jira = JiraClient(base_url=JIRA_BASE_URL, user_email=JIRA_USER_EMAIL, api_token=JIRA_API_TOKEN)
+        logger.info("Connected to JIRA successfully")
+    except Exception as e:
+        logger.error(f"Failed to connect to JIRA: {str(e)}")
+
+    logger.info("Project Setup in progress...")
+    # TODO: Implement project setup logic (my Jira account cannot create projects | Vlad)
+
+    # issues creation
+    logger.info("Creating Tickets...")
 
     try:
-        # Check if project already exists
-        try:
-            project = jira.project(PROJECT_KEY)
-            logger.info(f"Project {PROJECT_KEY} already exists")
-        except Exception:
-            # Create project if it doesn't exist
-            logger.info(f"Creating project {PROJECT_KEY}...")
-            project_dict = {
-                'key': PROJECT_KEY,
-                'name': 'Data Analysis',
-                'projectTypeKey': 'business',
-                'projectTemplateKey': 'com.atlassian.jira-core-project-templates:jira-core-project-management',
-                'leadAccountId': jira.myself()['accountId'],
-            }
-            project = jira.create_project(
-                key=PROJECT_KEY,
-                name='Data Analysis',
-                projectTypeKey='business'
-            )
-            logger.info(f"Project {PROJECT_KEY} created successfully")
-
-        # Create tickets
-        logger.info("Creating sample tickets...")
-        for ticket in sample_tickets:
-            issue_dict = {
-                'project': {'key': PROJECT_KEY},
-                'summary': ticket['summary'],
-                'description': ticket['description'],
-                'issuetype': {'name': 'Task'},
-                'labels': ticket['labels']
-            }
-            
-            # Old code using deprecated syntax
-            # issue = jira.create_issue(fields=issue_dict)
-            
-            # New code with component parameter
-            issue = jira.create_issue(
-                project_key=PROJECT_KEY,
-                summary=ticket['summary'],
-                description=ticket['description'],
-                issue_type='Task',
-                component='General',  # Add appropriate component name
-                additional_fields={'labels': ticket['labels']}
-            )
-            
-            logger.info(f"Created ticket {issue.key}: {ticket['summary']}")
-        
-        logger.info("JIRA setup completed successfully")
-        
+        for ticket_info in tickets:
+            resposne = jira.create_issue(ticket_info)
+            resposne = logger.info(f"Created Ticket {resposne.key}")
+        logger.info("Tickets Created Successfully")
     except Exception as e:
-        logger.error(f"Error setting up JIRA: {str(e)}")
+        logger.error(f"Failed to Create Tickets: {str(e)}")
+
 
 if __name__ == "__main__":
     setup_jira_project()
