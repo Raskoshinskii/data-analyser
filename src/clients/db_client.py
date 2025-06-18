@@ -12,6 +12,7 @@ class DatabaseClient:
     def __init__(self, connection_string: str):
         self.engine = create_engine(connection_string)
         self.connection = None
+        self.is_sqlite = connection_string.startswith('sqlite://') # detect if we're using SQLite
         
     def connect(self):
         if self.connection is None or self.connection.closed:
@@ -31,11 +32,27 @@ class DatabaseClient:
         
     def get_database_schema(self) -> Dict[str, List[Dict[str, str]]]:
         """Fetch database schema information."""
-        query = """
-        SELECT table_name, column_name, data_type 
-        FROM information_schema.columns 
-        WHERE table_schema = 'public'
-        """
+        if self.is_sqlite:
+            query = """
+            SELECT 
+                m.name as table_name, 
+                p.name as column_name,
+                p.type as data_type
+            FROM 
+                sqlite_master m
+            LEFT JOIN 
+                pragma_table_info(m.name) p
+            WHERE 
+                m.type = 'table' AND
+                m.name NOT LIKE 'sqlite_%'
+            """
+        else:
+            # postgreSQL related
+            query = """
+            SELECT table_name, column_name, data_type 
+            FROM information_schema.columns 
+            WHERE table_schema = 'public'
+            """
         
         with self.connect() as conn:
             result = conn.execute(text(query))
@@ -59,12 +76,12 @@ class DatabaseClient:
         start_time = time.time()
         try:
             with self.connect() as conn:
-                # Use pandas to execute the query and get results
+                # use pandas to execute the query and get results
                 df = pd.read_sql(sql_query, conn)
                 
-            execution_time = (time.time() - start_time) * 1000  # Convert to milliseconds
+            execution_time = (time.time() - start_time) * 1000  # convert to milliseconds
             
-            # Convert DataFrame to QueryResult
+            # convert DataFrame to QueryResult
             result = QueryResult(
                 data=df.to_dict(orient="records"),
                 row_count=len(df),

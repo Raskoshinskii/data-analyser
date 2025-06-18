@@ -1,0 +1,91 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Virtual environments
+.venv/
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints
+
+# PyInstaller
+#  Usually contains build artifacts
+dist/
+build/
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+
+# MyPy / Pyright
+.mypy_cache/
+.dmypy.json
+.pyre/
+
+# Pyre type checker
+.pyre/
+
+# pytype static type analyzer
+.pytype/
+
+# Pytest
+.pytest_cache/
+
+# Logs
+*.log
+
+# VS Code
+.vscode/
+
+# PyCharm
+.idea/
+
+# MacOS
+.DS_Store
+
+# Local settings
+*.env
+.env.*
+.envrc
+
+# JIRA, secrets, credentials
+secrets.*
+credentials.*
+*.pem
+*.key
+
+# Database / data files
+*.sqlite3
+*.db
+*.csv
+*.tsv
+*.parquet
+*.h5
+*.hdf5
+
+# Misc
+*.bak
+*.swp
+*.swo

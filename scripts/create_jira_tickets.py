@@ -23,45 +23,20 @@ PROJECT_KEY = os.environ.get('JIRA_PROJECT_KEY', 'DATA')
 # Sample data analysis tickets
 sample_tickets = [
     {
-        'summary': 'Sales trend analysis by model for Q1 2023',
-        'description': 'Please analyze the sales performance of different Porsche models during Q1 2023. Compare with previous quarters and identify top-performing models and any emerging trends.',
+        'summary': 'Car Models Analysis',
+        'description': 'How many unqiue car models we have per car category? Sort the results in descending order!',
         'labels': ['data_analysis', 'sales', 'quarterly']
     },
     {
-        'summary': 'Customer demographics by model preference',
-        'description': 'Analyze the relationship between customer demographics (age, location) and their preferred Porsche models. Which models are most popular in different regions and age groups?',
-        'labels': ['data_analysis', 'customers', 'demographics']
-    },
+        'summary': 'Dealership Performance by Region Analysis',
+        'description': 'Analyze the average dealership rating and sales capacity by region. Which regions have the highest performing dealerships? Sort the results by average rating in descending order.',
+        'labels': ['data_analysis', 'dealerships', 'regional']
+    }
     {
-        'summary': 'Service frequency analysis by vehicle age',
-        'description': 'Investigate how the frequency of service visits correlates with vehicle age and model. Do certain models require more maintenance as they age? Are there any common issues emerging at specific mileage points?',
-        'labels': ['data_analysis', 'service', 'maintenance']
-    },
-    {
-        'summary': 'Dealership performance comparison',
-        'description': 'Compare the performance of our dealerships across different regions. Analysis should include sales volume, service revenue, and customer satisfaction metrics. Identify top performers and potential areas for improvement.',
-        'labels': ['data_analysis', 'dealership', 'performance']
-    },
-    {
-        'summary': 'Color popularity analysis by model and region',
-        'description': 'Analyze which colors are most popular for different Porsche models. Include regional preferences in your analysis. Are there any interesting patterns or shifts in color preferences over time?',
-        'labels': ['data_analysis', 'sales', 'preferences']
-    },
-    {
-        'summary': 'Customer retention rate analysis',
-        'description': 'Calculate and analyze customer retention rates. What percentage of customers purchase another Porsche? Is there any correlation between service satisfaction and repeat purchases? How long is the typical upgrade cycle?',
-        'labels': ['data_analysis', 'customers', 'retention']
-    },
-    {
-        'summary': 'Electric vs. conventional model adoption trends',
-        'description': 'Compare the sales growth and customer demographics between our electric models (Taycan) and conventional models. What trends can we identify in the electric vehicle adoption? Which regions show the highest EV uptake?',
-        'labels': ['data_analysis', 'sales', 'electric_vehicles']
-    },
-    {
-        'summary': 'Service cost analysis by model and service type',
+        'summary': 'Service Cost Analysis by Model and Service Type',
         'description': 'Analyze the average service costs by model and service type. Identify which models have higher maintenance costs and which service types contribute most to overall service revenue.',
         'labels': ['data_analysis', 'service', 'costs']
-    }
+    },
 ]
 
 def setup_jira_project():
@@ -119,7 +94,19 @@ def setup_jira_project():
                 'labels': ticket['labels']
             }
             
-            issue = jira.create_issue(fields=issue_dict)
+            # Old code using deprecated syntax
+            # issue = jira.create_issue(fields=issue_dict)
+            
+            # New code with component parameter
+            issue = jira.create_issue(
+                project_key=PROJECT_KEY,
+                summary=ticket['summary'],
+                description=ticket['description'],
+                issue_type='Task',
+                component='General',  # Add appropriate component name
+                additional_fields={'labels': ticket['labels']}
+            )
+            
             logger.info(f"Created ticket {issue.key}: {ticket['summary']}")
         
         logger.info("JIRA setup completed successfully")

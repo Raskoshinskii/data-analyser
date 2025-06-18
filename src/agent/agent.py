@@ -106,3 +106,14 @@ class DataAnalysisAgent:
             results.append(insight)
             
         return results
+    
+    def create_jira_ticket(self, summary, description, issue_type='Task', **kwargs):
+        """Create a JIRA ticket."""
+        return self.jira_client.create_issue(
+            project_key=self.project_key,
+            summary=summary,
+            description=description,
+            issue_type=issue_type,
+            component='Analysis',  # Use appropriate component name based on your Jira setup
+            additional_fields=kwargs.get('additional_fields', {})
+        )

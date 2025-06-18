@@ -6,5 +6,5 @@ agent:
     max_tokens: 1500
 
 database:
-  connection_string: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${DB_HOST}:${DB_PORT}/${POSTGRES_DB}"
+  connection_string: "sqlite:////home/vlad/dev/data_analyzer/data/porsche_analytics.db"
   schema_info_query: "SELECT table_name, column_name, data_type FROM information_schema.columns WHERE table_schema = 'public'"

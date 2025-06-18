@@ -1,28 +1,21 @@
-import psycopg2
 import logging
 import os
-from dotenv import load_dotenv
+import sqlite3
+from langchain.sql_database import SQLDatabase
+from langchain_community.utilities import SQLDatabase as SQLDatabaseCommunity
 
+# set up logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
-
 logger = logging.getLogger(__name__)
 
-# Load environment variables
-load_dotenv()
+# database path
+DB_PATH = os.path.expanduser("../data/porsche_analytics.db")
+os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
 
-# Database connection parameters from environment variables
-db_params = {
-    'dbname': os.environ.get('POSTGRES_DB', 'porsche_analytics'),
-    'user': os.environ.get('POSTGRES_USER', 'porsche_admin'),
-    'password': os.environ.get('POSTGRES_PASSWORD', 'p0rsch3_secret'),
-    'host': os.environ.get('DB_HOST', 'localhost'),
-    'port': os.environ.get('DB_PORT', '5432')
-}
-
-# Porsche-specific data
+# car models data
 porsche_models = [
     ('911 Carrera', 'P-911-CR', 1963, None, 'Sports Car', 101200.00, 379, 'Coupe', False, 'Iconic rear-engine sports car'),
     ('911 Turbo S', 'P-911-TS', 1975, None, 'Sports Car', 207000.00, 640, 'Coupe', False, 'High-performance variant of the 911'),
@@ -39,7 +32,7 @@ porsche_models = [
     ('Carrera GT', 'P-CGT', 2003, 2007, 'Supercar', 448000.00, 605, 'Convertible', False, 'Mid-engine sports car')
 ]
 
-# Dealership data
+# dealership data
 dealerships = [
     ('Porsche New York City', '711 11th Avenue, New York, NY 10019', 'New York', 'United States', 'North America', '2000-03-15', True, 30, 4.7, 'John Smith'),
     ('Porsche Berlin', 'Franklinstrasse 23, 10587 Berlin', 'Berlin', 'Germany', 'Europe', '1998-06-20', True, 25, 4.8, 'Hans Mueller'),
@@ -53,7 +46,7 @@ dealerships = [
     ('Porsche Paris', '73 Avenue des Champs-Élysées, 75008 Paris', 'Paris', 'France', 'Europe', '1994-02-14', True, 20, 4.5, 'Claire Dubois')
 ]
 
-# Customer data
+# customer data
 customers = [
     ('Michael', 'Johnson', 'michael.j@example.com', '555-1234', '123 Park Avenue, New York, NY', 'New York', 'United States', '1975-06-15', '2015-03-10', 350, 1),
     ('Emma', 'Schmidt', 'emma.s@example.com', '555-2345', 'Münchener Str. 45, Berlin', 'Berlin', 'Germany', '1982-11-23', '2016-07-22', 280, 2),
@@ -67,7 +60,7 @@ customers = [
     ('Antoine', 'Dubois', 'antoine.d@example.com', '555-0123', '42 Rue de Rivoli, Paris', 'Paris', 'France', '1970-10-25', '2011-11-30', 580, 10)
 ]
 
-# Sales data with VINs
+# sales data
 sales = [
     (1, 1, 1, '2022-03-15', 110500.00, 'Financing', 'USD', 9300.00, 'WP0AA2A91NS227619', 'Carrara White', 'Sport Chrono Package, Premium Package', 3),
     (2, 2, 3, '2022-05-22', 92400.00, 'Cash', 'EUR', 5700.00, 'WP0BA2Y65PS275831', 'Jet Black', 'Panoramic Roof, Burmester Sound System', 3),
@@ -81,7 +74,7 @@ sales = [
     (10, 10, 10, '2023-01-25', 79900.00, 'Financing', 'EUR', 7800.00, 'WP0BA2Y61PS291358', 'Crayon', 'Panoramic Roof, Surround View Camera', 3)
 ]
 
-# Service records
+# service records
 service_records = [
     ('WP0AA2A91NS227619', 1, '2022-09-20', 5000, 'Regular Maintenance', 'Oil change and standard service', 850.00, 'James Wilson (Master)', 'Oil Filter, Air Filter', 2.5, 5),
     ('WP0BA2Y65PS275831', 2, '2022-11-15', 8000, 'Brake Service', 'Front brake pad replacement and inspection', 1200.00, 'Erik Schmidt (Senior)', 'Brake Pads', 3.0, 5),
@@ -95,76 +88,165 @@ service_records = [
     ('WP0BA2Y61PS291358', 10, '2023-08-28', 10000, 'Regular Maintenance', '10,000 mile service and alignment', 1350.00, 'Pierre Dubois (Master)', 'Oil Filter, Cabin Filter', 3.0, 5)
 ]
 
-def main():
-    """Main function to populate the database with sample data"""
-    conn = None
+# tables creation (SQLite based!)
+create_tables_sql = """
+-- Models table - information about Porsche car models
+CREATE TABLE models (
+    model_id INTEGER PRIMARY KEY,
+    model_name TEXT NOT NULL,
+    model_code TEXT NOT NULL,
+    production_start_year INTEGER,
+    production_end_year INTEGER,
+    segment TEXT,
+    base_price REAL,
+    horsepower INTEGER,
+    body_type TEXT,
+    is_electric INTEGER DEFAULT 0,
+    description TEXT
+);
+
+-- Dealerships table - Porsche dealerships information
+CREATE TABLE dealerships (
+    dealership_id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    address TEXT,
+    city TEXT,
+    country TEXT,
+    region TEXT,
+    opening_date TEXT,
+    service_center INTEGER DEFAULT 1,
+    sales_capacity INTEGER,
+    rating REAL,
+    manager_name TEXT
+);
+
+-- Customers table - Customer information
+CREATE TABLE customers (
+    customer_id INTEGER PRIMARY KEY,
+    first_name TEXT NOT NULL,
+    last_name TEXT NOT NULL,
+    email TEXT,
+    phone TEXT,
+    address TEXT,
+    city TEXT,
+    country TEXT,
+    date_of_birth TEXT,
+    registration_date TEXT,
+    loyalty_points INTEGER DEFAULT 0,
+    preferred_dealership_id INTEGER REFERENCES dealerships(dealership_id)
+);
+
+-- Sales table - Vehicle sales records
+CREATE TABLE sales (
+    sale_id INTEGER PRIMARY KEY,
+    customer_id INTEGER REFERENCES customers(customer_id),
+    dealership_id INTEGER REFERENCES dealerships(dealership_id),
+    model_id INTEGER REFERENCES models(model_id),
+    sale_date TEXT NOT NULL,
+    price REAL NOT NULL,
+    payment_method TEXT,
+    currency TEXT DEFAULT 'USD',
+    customization_cost REAL DEFAULT 0,
+    vin TEXT UNIQUE,
+    color TEXT,
+    options TEXT,
+    warranty_years INTEGER DEFAULT 2
+);
+
+-- Service records table - Maintenance and service data
+CREATE TABLE service_records (
+    service_id INTEGER PRIMARY KEY,
+    vin TEXT REFERENCES sales(vin),
+    dealership_id INTEGER REFERENCES dealerships(dealership_id),
+    service_date TEXT NOT NULL,
+    mileage INTEGER,
+    service_type TEXT,
+    description TEXT,
+    cost REAL,
+    technician TEXT,
+    parts_replaced TEXT,
+    hours_spent REAL,
+    customer_satisfaction INTEGER CHECK (customer_satisfaction BETWEEN 1 AND 5)
+);
+"""
+
+def create_database():
+    """Create the SQLite database and tables"""
+    # remove existing database if it exists
+    if os.path.exists(DB_PATH):
+        os.remove(DB_PATH)
+        logger.info(f"Removed existing database at {DB_PATH}")
+    
+    # connect to SQLite database
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    
+    # creae tables
+    logger.info("Creating database tables...")
+    cursor.executescript(create_tables_sql)
+    conn.commit()
+    
+    # insert data
+    logger.info("Inserting model data...")
+    cursor.executemany("""
+        INSERT INTO models (
+            model_name, model_code, production_start_year, production_end_year,
+            segment, base_price, horsepower, body_type, is_electric, description
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, porsche_models)
+    
+    logger.info("Inserting dealership data...")
+    cursor.executemany("""
+        INSERT INTO dealerships (
+            name, address, city, country, region, opening_date, service_center, sales_capacity, rating, manager_name
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, dealerships)
+    
+    logger.info("Inserting customer data...")
+    cursor.executemany("""
+        INSERT INTO customers (
+            first_name, last_name, email, phone, address, city, country, date_of_birth, registration_date, loyalty_points, preferred_dealership_id
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, customers)
+    
+    logger.info("Inserting sales data...")
+    cursor.executemany("""
+        INSERT INTO sales (
+            customer_id, dealership_id, model_id, sale_date, price, payment_method, currency, customization_cost, vin, color, options, warranty_years
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, sales)
+    
+    logger.info("Inserting service records...")
+    cursor.executemany("""
+        INSERT INTO service_records (
+            vin, dealership_id, service_date, mileage, service_type, description,
+            cost, technician, parts_replaced, hours_spent, customer_satisfaction
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, service_records)
+    
+    conn.commit()
+    conn.close()
+    
+    logger.info(f"Database created successfully at {DB_PATH}")
+    
+    # test connection to created DB using LangChain 
     try:
-        # Connect to the database
-        logger.info("Connecting to the PostgreSQL database...")
-        conn = psycopg2.connect(**db_params)
-        conn.autocommit = False
-        cur = conn.cursor()
+        try:
+            db = SQLDatabase.from_uri(f"sqlite:///{DB_PATH}")
+            logger.info("Successfully connected to database with LangChain")
+        except:
+            db = SQLDatabaseCommunity.from_uri(f"sqlite:///{DB_PATH}")
+            logger.info("Successfully connected to database with LangChain (community version)")
         
-        # Bulk insert models
-        logger.info("Bulk inserting data into models table...")
-        models_sql = """
-            INSERT INTO models (model_name, model_code, production_start_year, production_end_year, 
-                               segment, base_price, horsepower, body_type, is_electric, description)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-        """
-        cur.executemany(models_sql, porsche_models)
+        tables = db.get_usable_table_names()
+        logger.info(f"Available tables: {tables}")
         
-        # Bulk insert dealerships
-        logger.info("Bulk inserting data into dealerships table...")
-        dealerships_sql = """
-            INSERT INTO dealerships (name, address, city, country, region, opening_date, 
-                                    service_center, sales_capacity, rating, manager_name)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-        """
-        cur.executemany(dealerships_sql, dealerships)
-        
-        # Bulk insert customers
-        logger.info("Bulk inserting data into customers table...")
-        customers_sql = """
-            INSERT INTO customers (first_name, last_name, email, phone, address, city, country, 
-                                  date_of_birth, registration_date, loyalty_points, preferred_dealership_id)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-        """
-        cur.executemany(customers_sql, customers)
-        
-        # Bulk insert sales
-        logger.info("Bulk inserting data into sales table...")
-        sales_sql = """
-            INSERT INTO sales (customer_id, dealership_id, model_id, sale_date, price, payment_method,
-                              currency, customization_cost, vin, color, options, warranty_years)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-        """
-        cur.executemany(sales_sql, sales)
-        
-        # Bulk insert service records
-        logger.info("Bulk inserting data into service_records table...")
-        service_sql = """
-            INSERT INTO service_records (vin, dealership_id, service_date, mileage, service_type,
-                                       description, cost, technician, parts_replaced, hours_spent,
-                                       customer_satisfaction)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-        """
-        cur.executemany(service_sql, service_records)
-        
-        # Commit the changes
-        conn.commit()
-        logger.info(f"Data generation completed successfully - inserted {len(porsche_models)} models, "
-                   f"{len(dealerships)} dealerships, {len(customers)} customers, "
-                   f"{len(sales)} sales records, and {len(service_records)} service records")
-        
-    except (Exception, psycopg2.DatabaseError) as error:
-        logger.error(f"Error: {error}")
-        if conn:
-            conn.rollback()
-    finally:
-        if conn:
-            conn.close()
-            logger.info("Database connection closed")
+        return db
+    except Exception as e:
+        logger.error(f"Error connecting to database with LangChain: {e}")
+        return None
 
 if __name__ == "__main__":
-    main()
+    logger.info("Starting database setup process...")
+    db = create_database()
+    logger.info("Database setup complete!")
