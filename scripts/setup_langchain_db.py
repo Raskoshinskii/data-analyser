@@ -170,7 +170,7 @@ CREATE TABLE service_records (
 );
 """
 
-def create_database():
+def create_langchain_db():
     """Create the SQLite database and tables"""
     # remove existing database if it exists
     if os.path.exists(DB_PATH):
@@ -248,5 +248,5 @@ def create_database():
 
 if __name__ == "__main__":
     logger.info("Starting database setup process...")
-    db = create_database()
+    db = create_langchain_db()
     logger.info("Database setup complete!")
