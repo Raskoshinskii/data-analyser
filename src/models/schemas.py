@@ -19,10 +19,10 @@ class JiraTicket(BaseModel):
     assignee: Optional[str] = None
 
 
-class SQLQuery(BaseModel):
-    query: str
-    description: str = Field(description="Human-readable explanation of what the query does")
-    tables_used: List[str] = Field(default_factory=list)
+# class SQLQuery(BaseModel):
+#     query: str
+#     description: str = Field(description="Human-readable explanation of what the query does")
+#     tables_used: List[str] = Field(default_factory=list)
 
 class ValidationResult(BaseModel):
     is_valid: bool
@@ -47,7 +47,8 @@ class AgentState(BaseModel):
     """State maintained throughout the agent's workflow"""
     ticket: JiraTicket
     task_description: Optional[str] = None
-    sql_query: Optional[SQLQuery] = None
+    # sql_query: Optional[SQLQuery] = None
+    sql_query: Optional[str] = None
     validation_result: Optional[ValidationResult] = None
     query_result: Optional[QueryResult] = None
     business_insight: Optional[BusinessInsight] = None

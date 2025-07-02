@@ -4,7 +4,6 @@ from langgraph.graph import StateGraph, END
 
 from src.models.schemas import (
     JiraTicket, 
-    SQLQuery, 
     ValidationResult, 
     QueryResult, 
     BusinessInsight,

@@ -4,7 +4,7 @@ import sqlparse
 from typing import List, Optional, Tuple
 import sqlvalidator
 from langchain_core.language_models import BaseLanguageModel
-from src.models.schemas import SQLQuery, ValidationResult, QueryResult
+from src.models.schemas import ValidationResult, QueryResult
 
 from sql_metadata import Parser
 from typing import List, Optional, Set
@@ -122,7 +122,7 @@ class ValidatorTool:
         return True, None
 
 
-    def validate_sql(self, sql_query: str, task_description: str) -> ValidationResult:
+    def validate_sql(self, sql_query: str) -> ValidationResult:
         """Validate SQL query using multiple checks."""
         errors = []
         warnings = [] # TODO: align in the future if it's needed

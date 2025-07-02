@@ -84,7 +84,7 @@ class DatabaseClient:
             # convert DataFrame to QueryResult
             result = QueryResult(
                 data=df.to_dict(orient="records"),
-                row_count=len(df),
+                row_count=df.shape[0],
                 column_names=df.columns.tolist(),
                 execution_time_ms=execution_time
             )
