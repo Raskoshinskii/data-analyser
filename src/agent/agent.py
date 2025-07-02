@@ -1,0 +1,119 @@
+import logging
+from typing import List, Optional, Dict, Any
+import yaml
+from pathlib import Path
+import os
+
+from langchain_openai import ChatOpenAI
+from langgraph.graph import StateGraph
+
+from src.models.schemas import JiraTicket, BusinessInsight, AgentState
+from src.tools.sql_tool import SQLTool
+from src.tools.validator_tool import ValidatorTool
+from src.tools.insight_tool import InsightTool
+from src.clients.db_client import DatabaseClient
+from src.clients.jira_client import JiraClient
+from src.agent.workflow import create_workflow
+
+logger = logging.getLogger(__name__)
+
+
+class DataAnalysisAgent:
+    def __init__(self, config_path: Optional[str] = None):
+        """Initialize the Data Analysis Agent."""
+        # Load configuration
+        if config_path:
+            self.config = self._load_config(config_path)
+        else:
+            config_file = Path(os.path.expanduser("~/dev/data-analyzer/config/config.yaml"))
+            self.config = self._load_config(config_file)
+            
+        # Initialize LLM
+        self.llm = ChatOpenAI(
+            model=self.config["agent"]["llm"]["model_name"],
+            temperature=self.config["agent"]["llm"]["temperature"],
+            max_tokens=self.config["agent"]["llm"]["max_tokens"]
+        )
+        
+        # Initialize database client
+        self.db_client = DatabaseClient(self.config["database"]["connection_string"])
+        
+        # Get database schema
+        self.schema = self.db_client.get_database_schema()
+        
+        # # Initialize JIRA client
+        # self.jira_client = JiraClient(
+        #     jira_url=self.config["jira"]["url"],
+        #     username=self.config["jira"]["username"],
+        #     api_token=self.config["jira"]["api_token"],
+        #     project_key=self.config["jira"]["project_key"]
+        # )
+        
+        # Initialize tools
+        self.sql_tool = SQLTool(llm=self.llm)
+        self.validator_tool = ValidatorTool(llm=self.llm, schema_dict=self.schema)
+        self.insight_tool = InsightTool(llm=self.llm)
+        
+        # Initialize workflow
+        self.workflow = self._create_agent_workflow()
+        
+    def _load_config(self, config_path: str | Path) -> Dict[str, Any]:
+        """Load configuration from YAML file."""
+        with open(config_path, 'r') as file:
+            return yaml.safe_load(file)
+            
+    def _create_agent_workflow(self) -> StateGraph:
+        """Create the agent workflow."""
+        return create_workflow(
+            generate_sql_fn=lambda task: self.sql_tool.generate_query(task, self.schema),
+            validate_sql_fn=lambda query, task: self.validator_tool.validate_sql(query, task),
+            execute_query_fn=lambda query: self.db_client.execute_query(query),
+            validate_results_fn=lambda results, task: self.validator_tool.validate_query_results(results, task),
+            generate_insights_fn=lambda task, results: self.insight_tool.generate_insights(task, results),
+            update_jira_fn=lambda ticket_id, insights, failed=False: self.jira_client.update_ticket_with_results(ticket_id, insights),
+            max_retries=self.config["agent"]["max_retries"]
+        )
+        
+    def process_ticket(self, ticket: JiraTicket) -> BusinessInsight:
+        """Process a single JIRA ticket."""
+        logger.info(f"Processing ticket {ticket.ticket_id}")
+        
+        # Set the initial state
+        initial_state = AgentState(ticket=ticket)
+        
+        # Execute the workflow
+        final_state = self.workflow.invoke(initial_state)
+        
+        if final_state.business_insight:
+            logger.info(f"Successfully processed ticket {ticket.ticket_id}")
+            return final_state.business_insight
+        else:
+            logger.error(f"Failed to process ticket {ticket.ticket_id}")
+            return BusinessInsight(
+                summary=f"Failed to process ticket {ticket.ticket_id}",
+                key_points=[final_state.error_message or "Unknown error occurred"]
+            )
+    
+    def process_open_tickets(self, max_tickets: int = 5) -> List[BusinessInsight]:
+        """Process all open data analysis tickets."""
+        open_tickets = self.jira_client.get_open_tickets(max_results=max_tickets)
+        
+        logger.info(f"Found {len(open_tickets)} open data analysis tickets")
+        
+        results = []
+        for ticket in open_tickets:
+            insight = self.process_ticket(ticket)
+            results.append(insight)
+            
+        return results
+    
+    def create_jira_ticket(self, summary, description, issue_type='Task', **kwargs):
+        """Create a JIRA ticket."""
+        return self.jira_client.create_issue(
+            project_key=self.project_key,
+            summary=summary,
+            description=description,
+            issue_type=issue_type,
+            component='Analysis',  # Use appropriate component name based on your Jira setup
+            additional_fields=kwargs.get('additional_fields', {})
+        )

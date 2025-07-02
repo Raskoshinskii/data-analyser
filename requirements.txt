@@ -1,0 +1,15 @@
+langchain
+langchain-openai
+openai>=1.0.0
+pydantic
+python-dotenv
+psycopg2-binary
+sqlalchemy
+pandas
+sqlparse
+sqlvalidator
+jira
+langgraph
+PyYAML
+faker
+numpy

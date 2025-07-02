@@ -1,0 +1,10 @@
+agent:
+  max_retries: 3
+  llm:
+    model_name: "gpt-4"
+    temperature: 0.1
+    max_tokens: 1500
+
+database:
+  connection_string: "sqlite:////home/vlad/dev/data-analyser/data/porsche_analytics.db"
+  schema_info_query: "SELECT table_name, column_name, data_type FROM information_schema.columns WHERE table_schema = 'public'"
