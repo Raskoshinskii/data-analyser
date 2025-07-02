@@ -3,19 +3,11 @@ from typing import Dict, List, Optional, Any, Union
 from pydantic import BaseModel, Field
 
 
-class TicketStatus(str, Enum):
-    OPEN = "OPEN"
-    IN_PROGRESS = "IN_PROGRESS"
-    RESOLVED = "RESOLVED"
-    CLOSED = "CLOSED"
-    FAILED = "FAILED"
-
-
 class JiraTicket(BaseModel):
     ticket_id: str
     summary: str
     description: str
-    status: TicketStatus
+    status: str
     assignee: Optional[str] = None
 
 

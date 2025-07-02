@@ -56,12 +56,20 @@ def create_workflow(
             return "failed"
     
     # Define the workflow nodes
-    def extract_task(state: AgentState) -> AgentState:
+    # def extract_task(state: AgentState) -> AgentState:
+    #     """Extract task from JIRA ticket."""
+    #     logger.info(f"Extracting task from ticket {state.ticket.ticket_id}")
+    #     task = state.ticket.description
+    #     return AgentState(**{**state.model_dump(), "task_description": task})
+
+    def set_task_from_ticket(state: AgentState) -> AgentState:
         """Extract task from JIRA ticket."""
         logger.info(f"Extracting task from ticket {state.ticket.ticket_id}")
         task = state.ticket.description
-        return AgentState(**{**state.model_dump(), "task_description": task})
+        return state.model_copy(update={"current_task": task})
     
+
+
     def generate_sql(state: AgentState) -> AgentState:
         """Generate SQL query from task description."""
         logger.info(f"Generating SQL for task: {state.task_description}")
@@ -71,6 +79,10 @@ def create_workflow(
         except Exception as e:
             logger.error(f"Error generating SQL: {str(e)}")
             return AgentState(**{**state.model_dump(), "error_message": str(e)})
+    
+
+
+
     
     def validate_sql(state: AgentState) -> AgentState:
         """Validate the generated SQL query."""
@@ -140,6 +152,8 @@ def create_workflow(
         """Increment the retry counter."""
         logger.info(f"Incrementing retry counter from {state.retry_count} to {state.retry_count + 1}")
         return AgentState(**{**state.model_dump(), "retry_count": state.retry_count + 1})
+    
+
     
     # Build the graph
     workflow = StateGraph(AgentState)

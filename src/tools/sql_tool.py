@@ -24,14 +24,16 @@ Return ONLY the executable SQL query without any explanations, comments, or mark
 
 
 class SQLTool:
-    def __init__(self, llm: BaseLanguageModel):
+    def __init__(self, llm: BaseLanguageModel, db_schema: dict = None):
         self.llm = llm
         self.prompt = PromptTemplate(
             input_variables=["schema", "task_description"],
             template=SQL_GENERATION_TEMPLATE
-        )   
+        )
+        self.db_schema = self.db_schema
+    
         
-    def format_schema(self, schema_dict: dict) -> str:
+    def _format_schema(self, schema_dict: dict) -> str:
         """Format the schema dictionary into a readable string for the prompt."""
         schema_text = ""
         for table, columns in schema_dict.items():
@@ -43,9 +45,9 @@ class SQLTool:
         return schema_text
 
 
-    def generate_query(self, task_description: str, schema_dict: dict) -> str:
+    def generate_query(self, task_description: str) -> str:
         """Generate SQL query based on task description and schema."""
-        schema_text = self.format_schema(schema_dict)
+        schema_text = self._format_schema(self.db_schema)
         
         prompt_value = self.prompt.format(
             schema=schema_text,
