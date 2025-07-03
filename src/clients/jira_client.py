@@ -406,7 +406,7 @@ class JiraClient:
         """
         api_endpoint = "rest/api/3/search"
         url = f"{self.base_url}/{api_endpoint}"
-        jql = "assignee=currentUser() AND statusCategory != Done ORDER BY created DESC"
+        jql = "assignee = currentUser() AND statusCategory != Done ORDER BY created DESC"
 
         # container for accumulated issues
         all_issues = []

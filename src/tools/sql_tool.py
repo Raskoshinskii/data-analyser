@@ -30,7 +30,7 @@ class SQLTool:
             input_variables=["schema", "task_description"],
             template=SQL_GENERATION_TEMPLATE
         )
-        self.db_schema = self.db_schema
+        self.db_schema = db_schema
     
         
     def _format_schema(self, schema_dict: dict) -> str:

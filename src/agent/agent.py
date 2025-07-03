@@ -42,7 +42,7 @@ class DataAnalysisAgent:
         )
 
         # initialize tools
-        self.sql_generation_tool = SQLTool(llm=self.llm)
+        self.sql_generation_tool = SQLTool(llm=self.llm, db_schema=self.db_schema)
         self.sql_validation_tool = ValidatorTool(llm=self.llm, schema_dict=self.db_schema)
         self.sql_insight_tool = InsightTool(llm=self.llm)
 
@@ -66,7 +66,9 @@ class DataAnalysisAgent:
             update_jira_fn=lambda ticket_id, insights, failed=False: self.jira_client.update_ticket_with_results(ticket_id, insights),
             max_retries=self.config["agent"]["max_retries"]
         )
-        
+    
+    def update_jira_ticket(self, ticket_id: str, status: str, **kwargs) -> Dict[str, Any]:
+        pass
 
     
         

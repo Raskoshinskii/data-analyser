@@ -10,21 +10,17 @@ from src.models.schemas import (
     AgentState
 )
 
+from src.agent import DataAnalysisAgent
+
 logger = logging.getLogger(__name__)
 
 
 def create_workflow(
-    generate_sql_fn, 
-    validate_sql_fn, 
-    execute_query_fn, 
-    validate_results_fn,
-    generate_insights_fn,
-    update_jira_fn,
-    max_retries: int = 3
+    agent: DataAnalysisAgent, max_retries: int = 3
 ):
     """Create the agent workflow graph."""
-    
-    # Define state transitions
+
+
     def should_retry_query(state: AgentState) -> Literal["retry", "failed", "continue"]:
         """Check if we should retry generating SQL or move on."""
         if state.validation_result and state.validation_result.is_valid:
@@ -34,7 +30,8 @@ def create_workflow(
             return "retry"
         else:
             return "failed"
-    
+
+
     def should_retry_execution(state: AgentState) -> Literal["retry", "failed", "continue"]:
         """Check if we should retry executing the query or move on."""
         if state.query_result:
@@ -44,7 +41,8 @@ def create_workflow(
             return "retry"
         else:
             return "failed"
-    
+
+
     def process_results(state: AgentState) -> Literal["continue", "retry", "failed"]:
         """Check if results validation passed."""
         if state.validation_result and state.validation_result.is_valid:
@@ -54,84 +52,94 @@ def create_workflow(
             return "retry"
         else:
             return "failed"
-    
-    # Define the workflow nodes
-    # def extract_task(state: AgentState) -> AgentState:
-    #     """Extract task from JIRA ticket."""
-    #     logger.info(f"Extracting task from ticket {state.ticket.ticket_id}")
-    #     task = state.ticket.description
-    #     return AgentState(**{**state.model_dump(), "task_description": task})
 
-    def set_task_from_ticket(state: AgentState) -> AgentState:
+
+    def set_agent_task_from_ticket(state: AgentState) -> AgentState:
         """Extract task from JIRA ticket."""
         logger.info(f"Extracting task from ticket {state.ticket.ticket_id}")
         task = state.ticket.description
         return state.model_copy(update={"current_task": task})
-    
 
 
-    def generate_sql(state: AgentState) -> AgentState:
+    def generate_sql(state: AgentState, ) -> AgentState:
         """Generate SQL query from task description."""
-        logger.info(f"Generating SQL for task: {state.task_description}")
+        logger.info(f"Generating SQL for the current task")
         try:
-            sql_query = generate_sql_fn(state.task_description)
-            return AgentState(**{**state.model_dump(), "sql_query": sql_query, "error_message": None})
+            sql_query = agent.sql_generation_tool.generate_query(task_description=state.current_task)
+            return state.model_copy(update={"sql_query": sql_query, "error_message": None})
         except Exception as e:
             logger.error(f"Error generating SQL: {str(e)}")
-            return AgentState(**{**state.model_dump(), "error_message": str(e)})
-    
+            return state.model_copy(update={"error_message": str(e)})
 
 
-
-    
     def validate_sql(state: AgentState) -> AgentState:
         """Validate the generated SQL query."""
         logger.info("Validating SQL query")
         if not state.sql_query:
-            return AgentState(**{
-                **state.model_dump(), 
+            return state.model_copy(update={
                 "validation_result": ValidationResult(is_valid=False, errors=["No SQL query to validate"])
             })
             
-        validation_result = validate_sql_fn(state.sql_query, state.task_description)
-        return AgentState(**{**state.model_dump(), "validation_result": validation_result})
-    
-    def execute_query(state: AgentState) -> AgentState:
+        validation_result = agent.sql_validation_tool.validate_sql(sql_query=state.sql_query)
+        return state.model_copy(update={"validation_result": validation_result})
+
+
+    def execute_sql(state: AgentState) -> AgentState:
         """Execute the validated SQL query."""
         logger.info("Executing SQL query")
         try:
-            query_result = execute_query_fn(state.sql_query.query)
-            return AgentState(**{**state.model_dump(), "query_result": query_result, "error_message": None})
+            query_result = agent.db_client.execute_query(state.sql_query)
+            return state.model_copy(update={"query_result": query_result, "error_message": None})
         except Exception as e:
             logger.error(f"Error executing query: {str(e)}")
-            return AgentState(**{**state.model_dump(), "error_message": str(e)})
-    
-    def validate_results(state: AgentState) -> AgentState:
-        """Validate the query results."""
-        logger.info("Validating query results")
-        if not state.query_result:
-            return AgentState(**{
-                **state.model_dump(), 
-                "validation_result": ValidationResult(is_valid=False, errors=["No query results to validate"])
-            })
-            
-        validation_result = validate_results_fn(state.query_result, state.task_description)
-        return AgentState(**{**state.model_dump(), "validation_result": validation_result})
-    
+            return state.model_copy(update={"error_message": str(e)})
+
+
     def generate_insights(state: AgentState) -> AgentState:
         """Generate business insights from query results."""
         logger.info("Generating business insights")
         if not state.query_result:
-            return AgentState(**{
-                **state.model_dump(), 
+            return state.model_copy(update={
                 "business_insight": BusinessInsight(
-                    summary="Unable to generate insights - no query results available.", 
+                    summary="Unable to generate insights - no query results available.",
                     key_points=["Query execution failed."]
                 )
             })
+
+        insights = agent.sql_insight_tool.generate_insights(
+            task_description=state.current_task,
+            query_result=state.query_result
+        )
+        return state.model_copy(update={"business_insight": insights})
+    
+    def update_jira_ticket(state: AgentState, ticket_status: str = 'In Progress') -> AgentState:
+        """Update JIRA ticket with insights."""
+        logger.info(f"Updating JIRA ticket {state.ticket.ticket_id}")
+
+        # ticket status update
+        agent.jira_client.transition_issue(issue_key=state.ticket.ticket_id, status_name='В работе')
+
+        # add comment with business insights
+        if not state.business_insight:
+            error_comment = "Sorry, I cannot generate insights for this task."
+            agent.jira_client.add_comment(issue=state.ticket.ticket_id, comment=error_comment)
+        
+        agent.jira_client.add_comment(issue=state.ticket.ticket_id, comment=state.business_insight)
+        return state
+        
+
+    # def validate_results(state: AgentState) -> AgentState:
+    #     """Validate the query results."""
+    #     logger.info("Validating query results")
+    #     if not state.query_result:
+    #         return AgentState(**{
+    #             **state.model_dump(), 
+    #             "validation_result": ValidationResult(is_valid=False, errors=["No query results to validate"])
+    #         })
             
-        insights = generate_insights_fn(state.task_description, state.query_result)
-        return AgentState(**{**state.model_dump(), "business_insight": insights})
+    #     validation_result = validate_results_fn(state.query_result, state.task_description)
+    #     return AgentState(**{**state.model_dump(), "validation_result": validation_result})
+
     
     def update_jira_ticket(state: AgentState) -> AgentState:
         """Update JIRA ticket with insights."""
@@ -147,7 +155,8 @@ def create_workflow(
             update_jira_fn(state.ticket.ticket_id, error_insight, failed=True)
             
         return state
-    
+
+
     def increment_retry(state: AgentState) -> AgentState:
         """Increment the retry counter."""
         logger.info(f"Incrementing retry counter from {state.retry_count} to {state.retry_count + 1}")
@@ -159,11 +168,11 @@ def create_workflow(
     workflow = StateGraph(AgentState)
     
     # Add nodes
-    workflow.add_node("extract_task", extract_task)
+    workflow.add_node("extract_task", set_agent_task_from_ticket)
     workflow.add_node("generate_sql", generate_sql)
     workflow.add_node("validate_sql", validate_sql)
-    workflow.add_node("execute_query", execute_query)
-    workflow.add_node("validate_results", validate_results)
+    workflow.add_node("execute_query", execute_sql)
+    # workflow.add_node("validate_results", validate_results)
     workflow.add_node("generate_insights", generate_insights)
     workflow.add_node("update_jira", update_jira_ticket)
     workflow.add_node("increment_retry", increment_retry)
