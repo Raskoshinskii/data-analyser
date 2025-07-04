@@ -1,19 +1,26 @@
-import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 from src.agent.agent import DataAnalysisAgent
+from src.models.schemas import JiraTicket
 
 
-@patch('src.agent.agent.workflow.build')
-@patch('src.agent.agent.SQLTool')
-@patch('src.agent.agent.ValidatorTool')
-@patch('src.agent.agent.InsightTool')
-def test_agent_initialization(mock_insight_tool, mock_validator_tool, 
-                             mock_sql_tool, mock_workflow_build, mock_db_client):
+@patch("src.agent.agent.workflow.build")
+@patch("src.agent.agent.SQLTool")
+@patch("src.agent.agent.ValidatorTool")
+@patch("src.agent.agent.InsightTool")
+def test_agent_initialization(
+    mock_insight_tool: MagicMock,
+    mock_validator_tool: MagicMock,
+    mock_sql_tool: MagicMock,
+    mock_workflow_build: MagicMock,
+    mock_db_client: MagicMock,
+) -> None:
     """Test the initialization of the DataAnalysisAgent."""
     # Create the agent
-    agent = DataAnalysisAgent(agent_config="./config/config.yaml", db_client=mock_db_client)
-    
+    agent = DataAnalysisAgent(
+        agent_config="./config/config.yaml", db_client=mock_db_client
+    )
+
     # Assertions
     assert agent.db_client == mock_db_client
     assert agent.max_retries == 3  # default value
@@ -23,23 +30,31 @@ def test_agent_initialization(mock_insight_tool, mock_validator_tool,
     mock_insight_tool.assert_called_once()
 
 
-@patch('src.agent.agent.workflow.build')
-@patch('src.agent.agent.SQLTool')
-@patch('src.agent.agent.ValidatorTool')
-@patch('src.agent.agent.InsightTool')
-def test_process_ticket(mock_insight_tool, mock_validator_tool, 
-                       mock_sql_tool, mock_workflow_build, mock_db_client, sample_jira_ticket):
+@patch("src.agent.agent.workflow.build")
+@patch("src.agent.agent.SQLTool")
+@patch("src.agent.agent.ValidatorTool")
+@patch("src.agent.agent.InsightTool")
+def test_process_ticket(
+    mock_insight_tool: MagicMock,
+    mock_validator_tool: MagicMock,
+    mock_sql_tool: MagicMock,
+    mock_workflow_build: MagicMock,
+    mock_db_client: MagicMock,
+    sample_jira_ticket: JiraTicket,
+) -> None:
     """Test processing a ticket."""
     # Setup
     mock_workflow = MagicMock()
     mock_workflow_build.return_value = mock_workflow
-    
+
     # Create the agent
-    agent = DataAnalysisAgent(agent_config="./config/config.yaml", db_client=mock_db_client)
-    
+    agent = DataAnalysisAgent(
+        agent_config="./config/config.yaml", db_client=mock_db_client
+    )
+
     # Process a ticket
     agent.process_ticket(sample_jira_ticket)
-    
+
     # Assertions
     mock_workflow.assert_called_once()
     # Check that the workflow was called with the correct state

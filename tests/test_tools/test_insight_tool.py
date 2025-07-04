@@ -1,12 +1,10 @@
-import pytest
 from unittest.mock import patch, MagicMock
-
 from src.tools.insight_tool import InsightTool
 from src.models.schemas import QueryResult, BusinessInsight
 
 
 @patch('src.tools.insight_tool.ChatOpenAI')
-def test_insight_tool_initialization(mock_chat_openai):
+def test_insight_tool_initialization(mock_chat_openai: MagicMock) -> None:
     """Test the initialization of the InsightTool."""
     # Setup
     mock_llm = MagicMock()
@@ -19,7 +17,7 @@ def test_insight_tool_initialization(mock_chat_openai):
 
 
 @patch('src.tools.insight_tool.ChatOpenAI')
-def test_format_result_summary(mock_chat_openai):
+def test_format_result_summary(mock_chat_openai: MagicMock) -> None:
     """Test formatting the result summary."""
     # Setup
     mock_llm = MagicMock()
@@ -46,7 +44,7 @@ def test_format_result_summary(mock_chat_openai):
 
 
 @patch('src.tools.insight_tool.ChatOpenAI')
-def test_generate_insights(mock_chat_openai):
+def test_generate_insights(mock_chat_openai: MagicMock) -> None:
     """Test generating insights."""
     # Setup
     mock_llm = MagicMock()
@@ -75,7 +73,7 @@ def test_generate_insights(mock_chat_openai):
 
 
 @patch('src.tools.insight_tool.ChatOpenAI')
-def test_generate_insights_empty_result(mock_chat_openai):
+def test_generate_insights_empty_result(mock_chat_openai: MagicMock) -> None:
     """Test generating insights with empty result."""
     # Setup
     mock_llm = MagicMock()

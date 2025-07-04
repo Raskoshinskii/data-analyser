@@ -1,6 +1,4 @@
-import pytest
 from unittest.mock import patch, MagicMock
-
 from src.tools.sql_tool import SQLTool
 from src.models.schemas import SQLQuery
 
