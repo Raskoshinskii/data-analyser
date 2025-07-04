@@ -1,26 +1,9 @@
 import logging
 from langchain_core.prompts import PromptTemplate
 from langchain_core.language_models import BaseLanguageModel
+from src.tools.prompt_templates import SQL_GENERATION_TEMPLATE
 
 logger = logging.getLogger(__name__)
-
-SQL_GENERATION_TEMPLATE = """
-You are an expert SQL writer who helps generate safe and efficient SQL queries.
-
-DATABASE SCHEMA:
-{schema}
-
-USER REQUEST: 
-{task_description}
-
-Write a SQL query that fulfills the user's request. The query should be:
-1. Safe and well-formed
-2. Efficient
-3. Only use tables and columns that exist in the schema, use DATABASE SCHEMA
-4. Include appropriate JOINs, WHERE clauses, and aggregations as needed
-
-Return ONLY the executable SQL query without any explanations, comments, or markdown formatting.
-"""
 
 
 class SQLTool:

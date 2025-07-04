@@ -1,11 +1,9 @@
 import logging
-from typing import Annotated, Literal, Any
+from typing import Literal, Any
 from langgraph.graph import StateGraph, END
 
 from src.models.schemas import (
-    JiraTicket, 
     ValidationResult, 
-    QueryResult, 
     BusinessInsight,
     AgentState
 )
@@ -175,7 +173,7 @@ def create_workflow(
 
 
 
-
+# delete later
     # # Results validation branching
     # workflow.add_conditional_edges(
     #     "validate_results",

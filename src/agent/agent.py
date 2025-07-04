@@ -7,11 +7,10 @@ import os
 from langchain_openai import ChatOpenAI
 from langgraph.graph import StateGraph
 
-from src.models.schemas import JiraTicket, BusinessInsight, AgentState
+from src.models.schemas import JiraTicket, AgentState
 from src.tools.sql_tool import SQLTool
 from src.tools.validator_tool import ValidatorTool
 from src.tools.insight_tool import InsightTool
-from src.clients.db_client import DatabaseClient
 from src.clients.jira_client import JiraClient
 from src.agent.workflow import create_workflow
 from dotenv import load_dotenv

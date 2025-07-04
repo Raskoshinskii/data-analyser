@@ -1,12 +1,9 @@
 import json
-import copy
 import logging
 import requests
 
 from typing import Any, Dict, List, Optional, Union
 from requests.auth import HTTPBasicAuth
-
-# from src.models.schemas import JiraTicket, TicketStatus, BusinessInsight
 
 logger = logging.getLogger(__name__)
 
