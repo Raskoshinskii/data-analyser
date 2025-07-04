@@ -13,7 +13,7 @@ from src.models.schemas import JiraTicket
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    handlers=[logging.FileHandler("data_analyzer.log"), logging.StreamHandler()],
+    handlers=[logging.FileHandler("./logs/main.log"), logging.StreamHandler()],
 )
 
 logger = logging.getLogger(__name__)

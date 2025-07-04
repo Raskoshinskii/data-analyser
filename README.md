@@ -1,6 +1,6 @@
 # 🤖 Data Analysis Automation Agent
 
-An intelligent automation system that processes data analysis requests, generates appropriate SQL queries, executes them against a database, and delivers business insights.
+An intelligent automation system that processes data analysis requests from JIRA tickets, generates appropriate SQL queries, executes them against a database, and delivers business insights.
 
 ## 🌟 Features
 
@@ -8,22 +8,23 @@ An intelligent automation system that processes data analysis requests, generate
 - ✅ SQL validation for safety and correctness
 - 🔍 Intelligent data analysis and insight generation
 - 🛡️ Error handling and retry mechanisms
+- 🎫 JIRA integration for ticket management
 
 ## 🚀 Getting Started
 
 ### Prerequisites
 
 - 🐍 Python 3.11+
-- 🐘 PostgreSQL database
+- 💾 SQLite database (or PostgreSQL)
 - 🔑 OpenAI API key
-- 🐋 Docker and Docker Compose (for local development)
+- 🎫 JIRA account and API token
 
 ### 📦 Installation
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/data-analyzer.git
-cd data-analyzer
+git clone https://github.com/yourusername/data-analyser.git
+cd data-analyser
 ```
 
 2. Create a virtual environment:
@@ -47,7 +48,7 @@ OPENAI_API_KEY=your_api_key_here
 2. Update the configuration in `config/config.yaml`:
 ```yaml
 database:
-  connection_string: "postgresql://username:password@host:port/database"
+  connection_string: "sqlite:///path/to/your/database.db"
 ```
 
 ## 🏁 Usage
@@ -126,7 +127,6 @@ The sample database contains tables for:
 - **Agent Failures**: Check the logs in `data_analyzer.log` for detailed error information
 # Check JIRA logs
 docker logs jira_server
-```
 
 ### Running the Agent
 
@@ -195,4 +195,3 @@ The sample database contains tables for:
 - **Database Errors**: Check your database connection string and ensure the database is running
 - **OpenAI API Errors**: Ensure your API key is correctly set in the .env file
 - **Agent Failures**: Check the logs in `data_analyzer.log` for detailed error information
-
