@@ -195,3 +195,37 @@ The sample database contains tables for:
 - **Database Errors**: Check your database connection string and ensure the database is running
 - **OpenAI API Errors**: Ensure your API key is correctly set in the .env file
 - **Agent Failures**: Check the logs in `data_analyzer.log` for detailed error information
+
+## 🧪 Running Tests
+
+The project uses pytest for testing. The test suite covers all major components including the agent, database client, JIRA client, and various tools.
+
+### Setting Up the Test Environment
+
+1. Make sure you have all development dependencies installed:
+
+```bash
+pip install -e ".[dev]"
+# or
+pip install pytest pytest-cov
+```
+
+
+# Run all tests
+pytest
+
+# Run tests with coverage report
+pytest --cov=src
+
+# Run tests with verbose output
+pytest -v
+
+
+# Run tests for a specific module
+pytest tests/test_tools/
+
+# Run tests for a specific file
+pytest tests/test_tools/test_sql_tool.py
+
+# Run a specific test function
+pytest tests/test_tools/test_insight_tool.py::test_insight_tool_initialization
