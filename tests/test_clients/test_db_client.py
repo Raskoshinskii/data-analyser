@@ -1,116 +1,69 @@
 from unittest.mock import MagicMock, patch
-
 from src.clients.db_client import DatabaseClient
-from src.models.schemas import QueryResult
-
+import pandas as pd
 
 @patch("src.clients.db_client.create_engine")
-@patch("src.clients.db_client.inspect")
-def test_db_client_initialization(
-    mock_inspect: MagicMock, mock_create_engine: MagicMock
-) -> None:
+def test_db_client_initialization(mock_create_engine: MagicMock) -> None:
     """Test the initialization of the DatabaseClient."""
-    # Setup
     mock_engine = MagicMock()
     mock_create_engine.return_value = mock_engine
 
-    mock_inspector = MagicMock()
-    mock_inspect.return_value = mock_inspector
-
-    # Create the client
     client = DatabaseClient("sqlite:///test.db")
 
-    # Assertions
     mock_create_engine.assert_called_once_with("sqlite:///test.db")
     assert client.engine == mock_engine
-    assert client.inspector == mock_inspector
 
 
 @patch("src.clients.db_client.create_engine")
-@patch("src.clients.db_client.inspect")
-def test_get_tables(mock_inspect: MagicMock, mock_create_engine: MagicMock) -> None:
-    """Test getting tables from the database."""
-    # Setup
-    mock_engine = MagicMock()
-    mock_create_engine.return_value = mock_engine
-
-    mock_inspector = MagicMock()
-    mock_inspector.get_table_names.return_value = ["table1", "table2"]
-    mock_inspect.return_value = mock_inspector
-
-    # Create the client
-    client = DatabaseClient("sqlite:///test.db")
-
-    # Get tables
-    tables = client.get_tables()
-
-    # Assertions
-    assert tables == ["table1", "table2"]
-    mock_inspector.get_table_names.assert_called_once()
-
-
-@patch("src.clients.db_client.create_engine")
-@patch("src.clients.db_client.inspect")
-def test_get_schema(mock_inspect: MagicMock, mock_create_engine: MagicMock) -> None:
-    """Test getting schema from the database."""
-    # Setup
-    mock_engine = MagicMock()
-    mock_create_engine.return_value = mock_engine
-
-    mock_inspector = MagicMock()
-    mock_inspector.get_table_names.return_value = ["table1"]
-    mock_inspector.get_columns.return_value = [
-        {"name": "col1", "type": "INTEGER"},
-        {"name": "col2", "type": "TEXT"},
-    ]
-    mock_inspect.return_value = mock_inspector
-
-    # Create the client
-    client = DatabaseClient("sqlite:///test.db")
-
-    # Get schema
-    schema = client.get_schema()
-
-    # Assertions
-    assert "table1" in schema
-    assert len(schema["table1"]) == 2
-    assert schema["table1"][0]["column_name"] == "col1"
-    assert schema["table1"][0]["data_type"] == "INTEGER"
-    mock_inspector.get_table_names.assert_called_once()
-    mock_inspector.get_columns.assert_called_once_with("table1")
-
-
-@patch("src.clients.db_client.create_engine")
-@patch("src.clients.db_client.inspect")
 @patch("src.clients.db_client.text")
-def test_execute_query(
-    mock_text: MagicMock, mock_inspect: MagicMock, mock_create_engine: MagicMock
-) -> None:
-    """Test executing a query."""
-    # Setup
+def test_get_database_schema(mock_text: MagicMock, mock_create_engine: MagicMock) -> None:
+    """Test schema extraction logic."""
     mock_engine = MagicMock()
     mock_create_engine.return_value = mock_engine
 
-    mock_inspector = MagicMock()
-    mock_inspect.return_value = mock_inspector
-
-    mock_connection = MagicMock()
-    mock_engine.connect.return_value.__enter__.return_value = mock_connection
+    mock_conn = MagicMock()
+    mock_engine.connect.return_value.__enter__.return_value = mock_conn
 
     mock_result = MagicMock()
-    mock_result.keys.return_value = ["col1", "col2"]
-    mock_result.fetchall.return_value = [{"col1": "val1", "col2": "val2"}]
-    mock_connection.execute.return_value = mock_result
+    mock_result.fetchall.return_value = [
+        ("users", "id", "INTEGER"),
+        ("users", "name", "TEXT"),
+        ("orders", "order_id", "INTEGER"),
+    ]
+    mock_conn.execute.return_value = mock_result
 
-    # Create the client
     client = DatabaseClient("sqlite:///test.db")
+    schema = client.get_database_schema()
 
-    # Execute query
-    result = client.execute_query("SELECT * FROM table1")
+    expected = {
+        "users": [
+            {"column_name": "id", "data_type": "INTEGER"},
+            {"column_name": "name", "data_type": "TEXT"},
+        ],
+        "orders": [
+            {"column_name": "order_id", "data_type": "INTEGER"},
+        ],
+    }
+    assert schema == expected
 
-    # Assertions
-    assert isinstance(result, QueryResult)
-    assert result.data == [{"col1": "val1", "col2": "val2"}]
-    assert result.column_names == ["col1", "col2"]
+
+@patch("src.clients.db_client.pd.read_sql")
+@patch("src.clients.db_client.create_engine")
+def test_execute_query(mock_create_engine: MagicMock, mock_read_sql: MagicMock) -> None:
+    """Test query execution and QueryResult formatting."""
+    mock_engine = MagicMock()
+    mock_conn = MagicMock()
+    mock_create_engine.return_value = mock_engine
+    mock_engine.connect.return_value.__enter__.return_value = mock_conn
+
+    df = pd.DataFrame([{"col1": "a", "col2": 123}])
+    mock_read_sql.return_value = df
+
+    client = DatabaseClient("sqlite:///test.db")
+    result = client.execute_query("SELECT * FROM table")
+
+    assert result.data == [{"col1": "a", "col2": 123}]
     assert result.row_count == 1
-    mock_connection.execute.assert_called_once()
+    assert result.column_names == ["col1", "col2"]
+    assert isinstance(result.execution_time_ms, float)
+    mock_read_sql.assert_called_once()

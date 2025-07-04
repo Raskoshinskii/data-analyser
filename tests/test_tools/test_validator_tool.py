@@ -1,175 +1,143 @@
 from unittest.mock import MagicMock, patch
-
 from src.models.schemas import ValidationResult
 from src.tools.validator_tool import ValidatorTool
 
 
-@patch("src.tools.validator_tool.ChatOpenAI")
-def test_validator_tool_initialization(mock_chat_openai: MagicMock) -> None:
+def test_validator_tool_initialization() -> None:
     """Test the initialization of the ValidatorTool."""
-    # Setup
     mock_llm = MagicMock()
     schema_dict = {"table1": [{"column_name": "col1", "data_type": "INTEGER"}]}
 
-    # Create the tool
     tool = ValidatorTool(llm=mock_llm, schema_dict=schema_dict)
 
-    # Assertions
     assert tool.llm == mock_llm
     assert tool.schema_dict == schema_dict
 
 
-@patch("src.tools.validator_tool.ChatOpenAI")
-@patch("src.tools.validator_tool.sqlparse")
-def test_check_syntax_valid(
-    mock_sqlparse: MagicMock, mock_chat_openai: MagicMock
-) -> None:
+@patch("src.tools.validator_tool.sqlvalidator.parse")
+def test_check_syntax_valid(mock_parse: MagicMock) -> None:
     """Test checking syntax with valid SQL."""
-    # Setup
-    mock_llm = MagicMock()
-    schema_dict = {"table1": [{"column_name": "col1", "data_type": "INTEGER"}]}
+    mock_parse.return_value.is_valid.return_value = True
 
-    mock_sqlparse.format.return_value = "SELECT * FROM table1"
-    mock_sqlparse.parse.return_value = [MagicMock()]
+    tool = ValidatorTool(schema_dict={"table1": [{"column_name": "col1", "data_type": "INTEGER"}]})
 
-    # Create the tool
-    tool = ValidatorTool(llm=mock_llm, schema_dict=schema_dict)
-
-    # Check syntax
     is_valid, error = tool.check_syntax("SELECT * FROM table1")
 
-    # Assertions
     assert is_valid is True
     assert error is None
-    mock_sqlparse.format.assert_called_once()
-    mock_sqlparse.parse.assert_called_once()
+    mock_parse.assert_called_once_with("SELECT * FROM table1")
 
 
-@patch("src.tools.validator_tool.ChatOpenAI")
-@patch("src.tools.validator_tool.sqlparse")
-def test_check_syntax_invalid(
-    mock_sqlparse: MagicMock, mock_chat_openai: MagicMock
-) -> None:
+@patch("src.tools.validator_tool.sqlvalidator.parse")
+def test_check_syntax_invalid(mock_parse: MagicMock) -> None:
     """Test checking syntax with invalid SQL."""
-    # Setup
-    mock_llm = MagicMock()
-    schema_dict = {"table1": [{"column_name": "col1", "data_type": "INTEGER"}]}
+    mock_parse.return_value.is_valid.return_value = False
 
-    mock_sqlparse.format.return_value = "SELEC * FRUM table1"  # Intentional errors
-    mock_sqlparse.parse.return_value = []  # Empty list indicates parse failure
+    tool = ValidatorTool(schema_dict={"table1": [{"column_name": "col1", "data_type": "INTEGER"}]})
 
-    # Create the tool
-    tool = ValidatorTool(llm=mock_llm, schema_dict=schema_dict)
-
-    # Check syntax
     is_valid, error = tool.check_syntax("SELEC * FRUM table1")
 
-    # Assertions
     assert is_valid is False
     assert error == "Invalid Syntax"
-    mock_sqlparse.format.assert_called_once()
-    mock_sqlparse.parse.assert_called_once()
+    mock_parse.assert_called_once_with("SELEC * FRUM table1")
 
 
-@patch("src.tools.validator_tool.ChatOpenAI")
-def test_check_dangerous_patterns_safe(mock_chat_openai: MagicMock) -> None:
+def test_check_dangerous_patterns_safe() -> None:
     """Test checking for dangerous patterns with safe SQL."""
-    # Setup
-    mock_llm = MagicMock()
-    schema_dict = {"table1": [{"column_name": "col1", "data_type": "INTEGER"}]}
+    tool = ValidatorTool(schema_dict={"table1": [{"column_name": "col1", "data_type": "INTEGER"}]})
 
-    # Create the tool
-    tool = ValidatorTool(llm=mock_llm, schema_dict=schema_dict)
-
-    # Check dangerous patterns
     is_safe, error = tool.check_dangerous_patterns("SELECT * FROM table1")
 
-    # Assertions
     assert is_safe is True
     assert error is None
 
 
-@patch("src.tools.validator_tool.ChatOpenAI")
-def test_check_dangerous_patterns_unsafe(mock_chat_openai: MagicMock) -> None:
+def test_check_dangerous_patterns_unsafe() -> None:
     """Test checking for dangerous patterns with unsafe SQL."""
-    # Setup
-    mock_llm = MagicMock()
-    schema_dict = {"table1": [{"column_name": "col1", "data_type": "INTEGER"}]}
+    tool = ValidatorTool(schema_dict={"table1": [{"column_name": "col1", "data_type": "INTEGER"}]})
 
-    # Create the tool
-    tool = ValidatorTool(llm=mock_llm, schema_dict=schema_dict)
-
-    # Check dangerous patterns
     is_safe, error = tool.check_dangerous_patterns("DROP TABLE table1")
 
-    # Assertions
     assert is_safe is False
     assert "DROP" in error
 
 
-@patch("src.tools.validator_tool.ChatOpenAI")
-def test_check_schema_compatibility_valid(mock_chat_openai: MagicMock) -> None:
+@patch("src.tools.validator_tool.Parser")
+def test_check_schema_compatibility_valid(mock_parser: MagicMock) -> None:
     """Test checking schema compatibility with valid SQL."""
-    # Setup
-    mock_llm = MagicMock()
-    schema_dict = {"table1": [{"column_name": "col1", "data_type": "INTEGER"}]}
+    mock_instance = MagicMock()
+    mock_instance.tables = ["table1"]
+    mock_instance.columns = ["col1"]
 
-    # Create the tool
-    tool = ValidatorTool(llm=mock_llm, schema_dict=schema_dict)
+    # Both Parser calls return the same instance
+    mock_parser.side_effect = [mock_instance, mock_instance]
 
-    # Check schema compatibility
+    tool = ValidatorTool(schema_dict={"table1": [{"column_name": "col1", "data_type": "INTEGER"}]})
+
     is_compatible, error = tool.check_schema_compatibility("SELECT col1 FROM table1")
 
-    # Assertions
     assert is_compatible is True
     assert error is None
 
+    # Called twice, each with the same argument
+    assert mock_parser.call_count == 2
+    mock_parser.assert_any_call("SELECT col1 FROM table1")
 
-@patch("src.tools.validator_tool.ChatOpenAI")
-@patch("src.tools.validator_tool.extract_tables")
-def test_check_schema_compatibility_invalid(
-    mock_extract_tables: MagicMock, mock_chat_openai: MagicMock
-) -> None:
-    """Test checking schema compatibility with invalid SQL."""
-    # Setup
-    mock_llm = MagicMock()
-    schema_dict = {"table1": [{"column_name": "col1", "data_type": "INTEGER"}]}
 
-    mock_extract_tables.return_value = ["nonexistent_table"]
+@patch("src.tools.validator_tool.Parser")
+def test_check_schema_compatibility_invalid_table(mock_parser: MagicMock) -> None:
+    """Test schema compatibility with invalid table."""
+    mock_instance = MagicMock()
+    mock_instance.tables = ["nonexistent_table"]
+    mock_instance.columns = ["col1"]
 
-    # Create the tool
-    tool = ValidatorTool(llm=mock_llm, schema_dict=schema_dict)
+    # Return same mock instance for both calls to Parser
+    mock_parser.side_effect = [mock_instance, mock_instance]
 
-    # Check schema compatibility
-    is_compatible, error = tool.check_schema_compatibility(
-        "SELECT * FROM nonexistent_table"
-    )
+    tool = ValidatorTool(schema_dict={"table1": [{"column_name": "col1", "data_type": "INTEGER"}]})
 
-    # Assertions
+    is_compatible, error = tool.check_schema_compatibility("SELECT col1 FROM nonexistent_table")
+
     assert is_compatible is False
     assert "nonexistent_table" in error
-    mock_extract_tables.assert_called_once()
+
+    # Assert Parser called twice with the correct argument
+    assert mock_parser.call_count == 2
+    mock_parser.assert_any_call("SELECT col1 FROM nonexistent_table")
 
 
-@patch("src.tools.validator_tool.ChatOpenAI")
-def test_validate_sql_all_valid(mock_chat_openai: MagicMock) -> None:
-    """Test validating SQL with all checks passing."""
-    # Setup
-    mock_llm = MagicMock()
-    schema_dict = {"table1": [{"column_name": "col1", "data_type": "INTEGER"}]}
+@patch("src.tools.validator_tool.Parser")
+def test_check_schema_compatibility_invalid_column(mock_parser: MagicMock) -> None:
+    """Test schema compatibility with invalid column."""
+    mock_instance = MagicMock()
+    mock_instance.tables = ["table1"]
+    mock_instance.columns = ["nonexistent_column"]
 
-    # Create the tool
-    tool = ValidatorTool(llm=mock_llm, schema_dict=schema_dict)
+    # Return same mock instance for both calls
+    mock_parser.side_effect = [mock_instance, mock_instance]
 
-    # Patch the individual check methods
+    tool = ValidatorTool(schema_dict={"table1": [{"column_name": "col1", "data_type": "INTEGER"}]})
+
+    is_compatible, error = tool.check_schema_compatibility("SELECT nonexistent_column FROM table1")
+
+    assert is_compatible is False
+    assert "nonexistent_column" in error
+
+    # Verify Parser was called twice with correct argument
+    assert mock_parser.call_count == 2
+    mock_parser.assert_any_call("SELECT nonexistent_column FROM table1")
+
+
+def test_validate_sql_all_valid() -> None:
+    """Test validating SQL when all checks pass."""
+    tool = ValidatorTool(schema_dict={"table1": [{"column_name": "col1", "data_type": "INTEGER"}]})
+
     tool.check_syntax = MagicMock(return_value=(True, None))
     tool.check_dangerous_patterns = MagicMock(return_value=(True, None))
     tool.check_schema_compatibility = MagicMock(return_value=(True, None))
 
-    # Validate SQL
-    result = tool.validate_sql("SELECT col1 FROM table1", "Get col1 from table1")
+    result = tool.validate_sql("SELECT col1 FROM table1")
 
-    # Assertions
     assert isinstance(result, ValidationResult)
     assert result.is_valid is True
     assert len(result.errors) == 0
@@ -178,25 +146,16 @@ def test_validate_sql_all_valid(mock_chat_openai: MagicMock) -> None:
     tool.check_schema_compatibility.assert_called_once()
 
 
-@patch("src.tools.validator_tool.ChatOpenAI")
-def test_validate_sql_with_errors(mock_chat_openai: MagicMock) -> None:
-    """Test validating SQL with errors."""
-    # Setup
-    mock_llm = MagicMock()
-    schema_dict = {"table1": [{"column_name": "col1", "data_type": "INTEGER"}]}
+def test_validate_sql_with_errors() -> None:
+    """Test validating SQL when errors are found."""
+    tool = ValidatorTool(schema_dict={"table1": [{"column_name": "col1", "data_type": "INTEGER"}]})
 
-    # Create the tool
-    tool = ValidatorTool(llm=mock_llm, schema_dict=schema_dict)
-
-    # Patch the individual check methods
     tool.check_syntax = MagicMock(return_value=(False, "Syntax error"))
     tool.check_dangerous_patterns = MagicMock(return_value=(True, None))
     tool.check_schema_compatibility = MagicMock(return_value=(False, "Schema error"))
 
-    # Validate SQL
-    result = tool.validate_sql("SELEC col1 FRUM table1", "Get col1 from table1")
+    result = tool.validate_sql("SELEC col1 FRUM table1")
 
-    # Assertions
     assert isinstance(result, ValidationResult)
     assert result.is_valid is False
     assert len(result.errors) == 2
