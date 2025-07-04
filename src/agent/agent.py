@@ -22,11 +22,12 @@ logger = logging.getLogger(__name__)
 
 
 class DataAnalysisAgent:
-    def __init__(self, config_path: Optional[str] = None):
-        self.config = self._load_yaml_config(config_path)
+    def __init__(self, agent_config: str, db_client: Any, max_retries: int = 3):
+        self.config = self._load_yaml_config(agent_config)
+        self.max_retries = max_retries
 
         # initialize clients
-        self.db_client = DatabaseClient(self.config["database"]["connection_string"])
+        self.db_client = db_client
         self.db_schema = self.db_client.get_database_schema()
         self.jira_client = JiraClient(
             base_url=os.environ.get('JIRA_BASE_URL'),
@@ -46,33 +47,41 @@ class DataAnalysisAgent:
         self.sql_validation_tool = ValidatorTool(llm=self.llm, schema_dict=self.db_schema)
         self.sql_insight_tool = InsightTool(llm=self.llm)
 
-    #     # langcahin workflow
-    #     self.workflow = self._create_agent_workflow()
+        # langgraph workflow
+        self.workflow = self._create_agent_workflow()
 
 
     def _load_yaml_config(self, path: str | Path) -> Dict[str, Any]:
         """Load configuration from YAML file."""
         with open(path, 'r') as file:
             return yaml.safe_load(file)
-        
+
+
     def _create_agent_workflow(self) -> StateGraph:
-        """Create the agent workflow."""
-        return create_workflow(
-            generate_sql_fn=lambda task: self.sql_tool.generate_query(task, self.schema),
-            validate_sql_fn=lambda query, task: self.validator_tool.validate_sql(query, task),
-            execute_query_fn=lambda query: self.db_client.execute_query(query),
-            validate_results_fn=lambda results, task: self.validator_tool.validate_query_results(results, task),
-            generate_insights_fn=lambda task, results: self.insight_tool.generate_insights(task, results),
-            update_jira_fn=lambda ticket_id, insights, failed=False: self.jira_client.update_ticket_with_results(ticket_id, insights),
-            max_retries=self.config["agent"]["max_retries"]
-        )
-    
-    def update_jira_ticket(self, ticket_id: str, status: str, **kwargs) -> Dict[str, Any]:
-        pass
+        return create_workflow(agent=self, max_retries=self.max_retries)
 
-    
+
+    def process_ticket(self, ticket: JiraTicket) -> None:
+        """Process a single JIRA ticket."""
+        logger.info(f"Processing ticket {ticket.ticket_id}")
         
+        # define initial agent state
+        initial_state = AgentState(ticket=ticket)
+        
+        # execute the workflow
+        final_state = self.workflow.invoke(initial_state)
+        final_state = AgentState.model_validate(final_state) # convert back to Pydantic model (AgentState)
+        
+        if final_state.business_insight:
+            logger.info(f"Successfully processed ticket {ticket.ticket_id}")
+        else:
+            logger.error(f"Failed to process ticket {ticket.ticket_id}")
 
+
+
+
+    
+# drop later
     # def create_jira_ticket(self, summary, description, issue_type='Task', **kwargs):
     #     """Create a JIRA ticket."""
     #     return self.jira_client.create_issue(
@@ -84,9 +93,6 @@ class DataAnalysisAgent:
     #         additional_fields=kwargs.get('additional_fields', {})
     #     )
         
-
-    
-            
     # def _create_agent_workflow(self) -> StateGraph:
     #     """Create the agent workflow."""
     #     return create_workflow(
@@ -99,25 +105,6 @@ class DataAnalysisAgent:
     #         max_retries=self.config["agent"]["max_retries"]
     #     )
         
-    def process_ticket(self, ticket: JiraTicket) -> BusinessInsight:
-        """Process a single JIRA ticket."""
-        logger.info(f"Processing ticket {ticket.ticket_id}")
-        
-        # Set the initial state
-        initial_state = AgentState(ticket=ticket)
-        
-        # Execute the workflow
-        final_state = self.workflow.invoke(initial_state)
-        
-        if final_state.business_insight:
-            logger.info(f"Successfully processed ticket {ticket.ticket_id}")
-            return final_state.business_insight
-        else:
-            logger.error(f"Failed to process ticket {ticket.ticket_id}")
-            return BusinessInsight(
-                summary=f"Failed to process ticket {ticket.ticket_id}",
-                key_points=[final_state.error_message or "Unknown error occurred"]
-            )
     
     # def process_open_tickets(self, max_tickets: int = 5) -> List[BusinessInsight]:
     #     """Process all open data analysis tickets."""
