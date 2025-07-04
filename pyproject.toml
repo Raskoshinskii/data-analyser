@@ -12,6 +12,7 @@ dependencies = [
     "langgraph-checkpoint>=2.1.0",
     "matplotlib>=3.10.3",
     "openai>=1.93.0",
+    "pytest>=8.4.1",
     "seaborn>=0.13.2",
     "sql-metadata>=2.17.0",
     "sqlglot>=26.33.0",
