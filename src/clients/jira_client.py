@@ -1,8 +1,8 @@
 import json
 import logging
-import requests
-
 from typing import Any, Dict, List, Optional, Union
+
+import requests
 from requests.auth import HTTPBasicAuth
 
 logger = logging.getLogger(__name__)
@@ -171,20 +171,17 @@ class JiraClient:
             method=method, url=url, headers=self.headers, auth=self.auth, **kwargs
         )
         return self._handle_response(response)
-    
-    def _preprocess_payload(
-        self,
-        payload: Dict[str, Any]
-    ) -> Dict[str, Any]:
+
+    def _preprocess_payload(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
         Aligns the payload structure with Jira API requirements.
 
         Important
         ---------
-        - The function covers the most common fileds of a payload. 
+        - The function covers the most common fileds of a payload.
         New fields should be either included in the function or formatted in the payload!
-        - Performs "inplace" operation! 
-        
+        - Performs "inplace" operation!
+
         Parameters
         ----------
         payload : Dict[str, Any]
@@ -211,7 +208,7 @@ class JiraClient:
             payload["reporteer"] = [{"accountId": payload["reporteer"]}]
 
         return payload
-    
+
     def _get_account_id(self) -> str | None:
         """
         Get the account ID of the currently authenticated user.
@@ -223,10 +220,10 @@ class JiraClient:
         """
         url = f"{self.base_url}/rest/api/3/myself"
         response = self._request(method="get", url=url)
-        
+
         if not response or "accountId" not in response:
             return None
-            
+
         return response.get("accountId")
 
     def get_comments(self, issue_key: str) -> Optional[Dict[str, Any]]:
@@ -377,7 +374,7 @@ class JiraClient:
         api_endpoint = "rest/api/2/issue"
         url = f"{self.base_url}/{api_endpoint}"
         fields = self._preprocess_payload(payload)
-        
+
         return self._request(method="post", url=url, json={"fields": fields})
 
     def get_active_issues(
@@ -403,7 +400,9 @@ class JiraClient:
         """
         api_endpoint = "rest/api/3/search"
         url = f"{self.base_url}/{api_endpoint}"
-        jql = "assignee = currentUser() AND statusCategory != Done ORDER BY created DESC"
+        jql = (
+            "assignee = currentUser() AND statusCategory != Done ORDER BY created DESC"
+        )
 
         # container for accumulated issues
         all_issues = []

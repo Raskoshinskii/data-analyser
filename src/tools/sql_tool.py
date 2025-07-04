@@ -1,6 +1,8 @@
 import logging
-from langchain_core.prompts import PromptTemplate
+
 from langchain_core.language_models import BaseLanguageModel
+from langchain_core.prompts import PromptTemplate
+
 from src.tools.prompt_templates import SQL_GENERATION_TEMPLATE
 
 logger = logging.getLogger(__name__)
@@ -11,11 +13,10 @@ class SQLTool:
         self.llm = llm
         self.prompt = PromptTemplate(
             input_variables=["schema", "task_description"],
-            template=SQL_GENERATION_TEMPLATE
+            template=SQL_GENERATION_TEMPLATE,
         )
         self.db_schema = db_schema
-    
-        
+
     def _format_schema(self, schema_dict: dict) -> str:
         """Format the schema dictionary into a readable string for the prompt."""
         schema_text = ""
@@ -27,26 +28,23 @@ class SQLTool:
             schema_text += "\n"
         return schema_text
 
-
     def generate_query(self, task_description: str) -> str:
         """Generate SQL query based on task description and schema."""
         schema_text = self._format_schema(self.db_schema)
-        
+
         prompt_value = self.prompt.format(
-            schema=schema_text,
-            task_description=task_description
+            schema=schema_text, task_description=task_description
         )
-        
+
         logger.info(f"Generating SQL query for task: {task_description}")
 
         try:
             response = self.llm.invoke(prompt_value)
 
-            if hasattr(response, 'content'):
+            if hasattr(response, "content"):
                 return response.content.strip()
             else:
                 logger.error(f"Empty response from LLM")
 
         except Exception as e:
             logger.error(f"Error generating SQL query: {str(e)}")
-

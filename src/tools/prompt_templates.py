@@ -1,13 +1,13 @@
 DANGEROUS_PATTERNS = [
-    r'\bDROP\b', 
-    r'\bDELETE\b', 
-    r'\bTRUNCATE\b', 
-    r'\bALTER\b', 
-    r'\bUPDATE\b',
-    r'\bGRANT\b',
-    r'\bREVOKE\b',
-    r'\bEXEC\b',
-    r'\bINSERT\b'
+    r"\bDROP\b",
+    r"\bDELETE\b",
+    r"\bTRUNCATE\b",
+    r"\bALTER\b",
+    r"\bUPDATE\b",
+    r"\bGRANT\b",
+    r"\bREVOKE\b",
+    r"\bEXEC\b",
+    r"\bINSERT\b",
 ]
 
 INSIGHT_TEMPLATE = """
