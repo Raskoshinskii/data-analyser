@@ -2,7 +2,7 @@ import logging
 from langchain_core.language_models import BaseLanguageModel
 from langchain_core.prompts import PromptTemplate
 from src.models.schemas import QueryResult
-from src.tools.insight_prompts import INSIGHT_TEMPLATE
+from src.tools.prompt_templates import INSIGHT_TEMPLATE
 from typing import Optional
 
 logger = logging.getLogger(__name__)
