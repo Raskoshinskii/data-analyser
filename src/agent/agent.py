@@ -61,7 +61,7 @@ class DataAnalysisAgent:
 
     def process_ticket(self, ticket: JiraTicket) -> None:
         """Process a single JIRA ticket."""
-        logger.info(f"\nProcessing ticket {ticket.ticket_id}")
+        logger.info(f"Processing ticket {ticket.ticket_id}")
 
         # define initial agent state
         initial_state = AgentState(ticket=ticket)
