@@ -482,6 +482,9 @@ class JiraClient:
         """
         url = f"{self.base_url}/rest/api/2/issue/{issue_key}"
         return self._request(method="put", url=url, json={"fields": fields})
+    
+
+
 
     def get_available_transitions(self, issue_key: str) -> List[Dict[str, Any]]:
         """
@@ -538,7 +541,7 @@ class JiraClient:
         data = {"transition": {"id": transition_id}}
         return self._request(method="post", url=transition_url, json=data)
 
-    def search_issues(self, jql: str, max_results: int = 50) -> Dict[str, Any]:
+    def run_jql(self, jql: str, max_results: int = 50) -> Dict[str, Any]:
         """
         Search Jira issues using JQL. Jira limits number of results per request to 100.
 
@@ -633,3 +636,54 @@ class JiraClient:
             "created_date": fields.get("created"),
             "updated_date": fields.get("updated"),
         }
+    
+    def delete_issues(
+        self, project_key: str, issue_key: str, max_results: int = 50
+    ) -> None:
+        """
+        Delete either:
+        - a single issue by its key, or
+        - all issues from a specific project in Jira.
+
+        Parameters
+        ----------
+        project_key : Optional[str]
+            Jira project key (e.g., "DATA") if deleting all issues from a project.
+        issue_key : Optional[str]
+            Specific issue key to delete (e.g., "DATA-123").
+        max_results : int
+            Number of issues to fetch per page (used only when deleting by project).
+
+        Raises
+        ------
+        ValueError
+            If neither or both of `project_key` and `issue_key` are provided.
+        """
+        if not project_key and not issue_key:
+            raise ValueError("Please, provide 'project_key' and 'issue_key' parameters!")
+        
+        # single issue deletion logic
+        if issue_key != 'all':
+            delete_url = f"{self.base_url}/rest/api/3/issue/{issue_key}"
+            try:
+                self._request(method="delete", url=delete_url)
+                logger.info(f"Issue {issue_key} deleted.")
+            except Exception as e:
+                logger.error(f"Failed to delete issue {issue_key}: {str(e)}")
+            return None
+        
+        # many issues deletion logic
+        jql = f"project = {project_key} ORDER BY created ASC"
+        issues = self.run_jql(
+            jql=jql, max_results=max_results
+        )
+
+        for issue in issues['issues']:
+            issue_id = issue["key"]
+            delete_url = f"{self.base_url}/rest/api/3/issue/{issue_id}"
+            try:
+                self._request(method="delete", url=delete_url)
+                logger.info(f"Issue {issue_id} deleted.")
+            except Exception as e:
+                logger.error(f"Failed to delete issue {issue_id}: {str(e)}")
+

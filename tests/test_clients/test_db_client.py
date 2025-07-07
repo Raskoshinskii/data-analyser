@@ -4,13 +4,26 @@ import pandas as pd
 
 @patch("src.clients.db_client.create_engine")
 def test_db_client_initialization(mock_create_engine: MagicMock) -> None:
-    """Test the initialization of the DatabaseClient."""
+    """
+    Unit test for verifying the initialization behavior of the DatabaseClient.
+
+    This test ensures that:
+    - The `create_engine` function from SQLAlchemy is called exactly once with the correct connection string.
+    - The resulting engine is correctly assigned to the `engine` attribute of the DatabaseClient instance.
+
+    Args:
+        mock_create_engine (MagicMock): A mock object that replaces `create_engine` during the test.
+    """
+    # change the behaviour of SQLAlchemy "create_engine" to mock
     mock_engine = MagicMock()
+
+    # when "create_engine" is called, returns the mock engine!!!
     mock_create_engine.return_value = mock_engine
 
-    client = DatabaseClient("sqlite:///test.db")
-
+    # check that the DatabaseClient called only once with the correct connection string!
+    client = DatabaseClient(connection_string="sqlite:///test.db")
     mock_create_engine.assert_called_once_with("sqlite:///test.db")
+
     assert client.engine == mock_engine
 
 
@@ -19,18 +32,19 @@ def test_db_client_initialization(mock_create_engine: MagicMock) -> None:
 def test_get_database_schema(mock_text: MagicMock, mock_create_engine: MagicMock) -> None:
     """Test schema extraction logic."""
     mock_engine = MagicMock()
-    mock_create_engine.return_value = mock_engine
-
     mock_conn = MagicMock()
-    mock_engine.connect.return_value.__enter__.return_value = mock_conn
-
     mock_result = MagicMock()
+
+    mock_create_engine.return_value = mock_engine
+    mock_engine.connect.return_value.__enter__.return_value = mock_conn
+    mock_conn.execute.return_value = mock_result
+
     mock_result.fetchall.return_value = [
         ("users", "id", "INTEGER"),
         ("users", "name", "TEXT"),
         ("orders", "order_id", "INTEGER"),
     ]
-    mock_conn.execute.return_value = mock_result
+    
 
     client = DatabaseClient("sqlite:///test.db")
     schema = client.get_database_schema()

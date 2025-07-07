@@ -19,3 +19,6 @@ dependencies = [
     "sqlparse>=0.5.3",
     "sqlvalidator>=0.0.20",
 ]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
