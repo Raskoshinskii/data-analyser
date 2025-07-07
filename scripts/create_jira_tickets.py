@@ -6,6 +6,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from dotenv import load_dotenv
 
 from src.clients.jira_client import JiraClient
+from scripts.constants import TICKETS_TO_TEST
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -26,30 +27,7 @@ if None in (JIRA_BASE_URL, JIRA_USER_EMAIL, JIRA_API_TOKEN, JIRA_PROJECT_KEY):
     logger.error(f"Configure Jira Environment Variables in .env file!")
     sys.exit(1)
 
-# sample data analysis tickets
-tickets = [
-    {
-        "project": JIRA_PROJECT_KEY,
-        "summary": "Car Models Analysis",
-        "description": "How many unqiue car models we have per car category? Sort the results in descending order!",
-        "issuetype": "Task",
-    },
-    {
-        "project": JIRA_PROJECT_KEY,
-        "summary": "Dealership Performance by Region Analysis",
-        "description": "Analyze the average dealership rating and sales capacity by region. Which regions have the highest performing dealerships? Sort the results by average rating in descending order.",
-        "issuetype": "Task",
-    },
-    {
-        "project": JIRA_PROJECT_KEY,
-        "summary": "Service Cost Analysis by Model and Service Type",
-        "description": "Analyze the average service costs by model and service type. Identify which models have higher maintenance costs and which service types contribute most to overall service revenue.",
-        "issuetype": "Task",
-    },
-]
-
-
-def create_jira_tickets():
+def create_jira_tickets(tickets):
     """Set up JIRA project and create sample tickets"""
     logger.info("Connecting to JIRA...")
     try:
@@ -76,4 +54,4 @@ def create_jira_tickets():
 
 
 if __name__ == "__main__":
-    create_jira_tickets()
+    create_jira_tickets(tickets=TICKETS_TO_TEST)

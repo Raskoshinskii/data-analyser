@@ -48,3 +48,5 @@ class SQLTool:
 
         except Exception as e:
             logger.error(f"Error generating SQL query: {str(e)}")
+
+    # TODO: add execute_query method
